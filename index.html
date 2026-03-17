@@ -1382,12 +1382,7 @@ function rotateImage(deg) {
 // ── PAGES ──
 function addPage() {
   if (!currentImageData) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = currentImageData.width;
-  canvas.height = currentImageData.height;
-  const ctx = canvas.getContext('2d');
-  ctx.putImageData(currentImageData, 0, 0);
-  const dataURL = canvas.toDataURL('image/png');
+  const dataURL = mainCanvas.toDataURL('image/png');
   const page = {
     dataURL: dataURL,
     width: currentImageData.width,
@@ -1521,28 +1516,18 @@ function resetAll() {
 // ── EXPORT ──
 function downloadPNG() {
   if (!currentImageData) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = currentImageData.width;
-  canvas.height = currentImageData.height;
-  const ctx = canvas.getContext('2d');
-  ctx.putImageData(currentImageData, 0, 0);
   const link = document.createElement('a');
   link.download = 'scan.png';
-  link.href = canvas.toDataURL('image/png');
+  link.href = mainCanvas.toDataURL('image/png');
   link.click();
   showToast('PNG downloaded!');
 }
 
 function downloadJPEG() {
   if (!currentImageData) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = currentImageData.width;
-  canvas.height = currentImageData.height;
-  const ctx = canvas.getContext('2d');
-  ctx.putImageData(currentImageData, 0, 0);
   const link = document.createElement('a');
   link.download = 'scan.jpg';
-  link.href = canvas.toDataURL('image/jpeg', 0.9);
+  link.href = mainCanvas.toDataURL('image/jpeg', 0.9);
   link.click();
   showToast('JPEG downloaded!');
 }
@@ -1587,12 +1572,7 @@ function shareDoc() {
 
 async function shareViaWebShare() {
   if (!currentImageData || !navigator.share) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = currentImageData.width;
-  canvas.height = currentImageData.height;
-  const ctx = canvas.getContext('2d');
-  ctx.putImageData(currentImageData, 0, 0);
-  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  const blob = await new Promise(resolve => mainCanvas.toBlob(resolve, 'image/png'));
   const file = new File([blob], 'scan.png', { type: 'image/png' });
   try {
     await navigator.share({ files: [file], title: 'Scanned Document' });
@@ -1604,13 +1584,8 @@ async function shareViaWebShare() {
 
 async function copyImageLink() {
   if (!currentImageData) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = currentImageData.width;
-  canvas.height = currentImageData.height;
-  const ctx = canvas.getContext('2d');
-  ctx.putImageData(currentImageData, 0, 0);
   try {
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const blob = await new Promise(resolve => mainCanvas.toBlob(resolve, 'image/png'));
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
     showToast('Copied to clipboard!');
   } catch (e) {
