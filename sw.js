@@ -2,6 +2,7 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open('docscan-cache-v1').then(cache => {
       return cache.addAll([
+        './index.html',
         './KINGZPDF.html',
         './manifest.json'
       ]);
