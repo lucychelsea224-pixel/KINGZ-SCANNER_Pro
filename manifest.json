@@ -2,7 +2,7 @@
   "name": "DocScan Pro",
   "short_name": "DocScan",
   "description": "Advanced document scanning and enhancement app",
-  "start_url": "./KINGZPDF.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0d0e11",
   "theme_color": "#e8ff47",

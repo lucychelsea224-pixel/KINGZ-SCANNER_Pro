@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#e8ff47">
 <meta name="description" content="Advanced document scanning and enhancement app">
 <link rel="manifest" href="./manifest.json">
-<title>DocScan Pro</title>
+<title>KingzScan Pro</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
 
@@ -189,6 +189,7 @@
   #cropOverlay {
     position: absolute; inset: 0; display: none;
     cursor: crosshair;
+    z-index: 2;
   }
   #cropOverlay.active { display: block; }
   #cropRect {
@@ -197,10 +198,18 @@
     pointer-events: none;
   }
   .crop-handle {
-    position: absolute; width: 10px; height: 10px;
-    background: var(--accent); border-radius: 2px;
+    position: absolute; background: #87ceeb; border-radius: 999px;
     transform: translate(-50%, -50%);
+    pointer-events: auto;
   }
+  .crop-handle.corner {
+    width: 16px; height: 16px;
+  }
+  .crop-handle.edge {
+    width: 24px; height: 12px;
+    border-radius: 4px;
+  }
+
 
   /* ── ACTION BAR ── */
   .action-bar {
@@ -348,6 +357,28 @@
     header { padding: 14px 16px; }
     .header-steps { display: none; }
   }
+
+  /* Mobile touch optimizations */
+  @media (pointer: coarse) {
+    .btn {
+      min-height: 44px;
+      padding: 12px 20px;
+      font-size: 1rem;
+    }
+    .crop-handle {
+      width: 20px;
+      height: 20px;
+    }
+    .effect-btn {
+      padding: 12px 8px;
+    }
+    .page-thumb {
+      padding: 12px;
+    }
+    .page-del {
+      padding: 8px;
+    }
+  }
 </style>
 </head>
 <body>
@@ -360,7 +391,7 @@
         <path d="M9 7h6M9 11h6M9 15h4"/>
       </svg>
     </div>
-    Doc<span class="highlight">Scan</span> Pro
+    Kingz<span class="highlight">Scan</span> Pro
   </div>
   <div class="header-steps">
     <div class="step-pill active" id="s1">01 Capture</div>
@@ -436,14 +467,9 @@
       <!-- Canvas preview -->
       <div id="canvasWrap">
         <canvas id="mainCanvas"></canvas>
-        <div id="cropOverlay" onmousedown="startCrop(event)" onmousemove="doCrop(event)" onmouseup="endCrop(event)"
-             ontouchstart="startCropTouch(event)" ontouchmove="doCropTouch(event)" ontouchend="endCrop(event)">
-          <div id="cropRect">
-            <div class="crop-handle" data-handle="nw" style="top:0;left:0;cursor:nw-resize"></div>
-            <div class="crop-handle" data-handle="ne" style="top:0;right:0;left:auto;cursor:ne-resize"></div>
-            <div class="crop-handle" data-handle="sw" style="bottom:0;top:auto;left:0;cursor:sw-resize"></div>
-            <div class="crop-handle" data-handle="se" style="bottom:0;top:auto;right:0;left:auto;cursor:se-resize"></div>
-          </div>
+        <div id="cropOverlay" onpointerdown="startCrop(event)" onpointermove="doCrop(event)" onpointerup="endCrop(event)" onpointercancel="endCrop(event)">
+          <div id="cropRect"></div>
+          <div id="cropHandles" style="position:absolute; inset:0; pointer-events:auto;"></div>
         </div>
       </div>
 
@@ -709,6 +735,7 @@ const hiddenCanvas = document.getElementById('hiddenCanvas');
 const hctx = hiddenCanvas.getContext('2d');
 const cropOverlay = document.getElementById('cropOverlay');
 const cropRectEl = document.getElementById('cropRect');
+const cropHandles = document.getElementById('cropHandles');
 const placeholder = document.getElementById('placeholder');
 const actionBar = document.getElementById('actionBar');
 const scanZone = document.getElementById('scanZone');
@@ -768,10 +795,12 @@ async function startCamera() {
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
     });
     video.srcObject = stream;
+    await video.play();
     placeholder.style.display = 'none';
     videoWrap.classList.add('active');
     setStep(1);
   } catch(e) {
+    console.error('Camera error:', e);
     showToast('Camera access denied or not available');
   }
 }
@@ -843,6 +872,7 @@ function showImage(imgData) {
   ctx.putImageData(imgData, 0, 0);
   currentImageData = imgData;
   canvasWrap.classList.add('active');
+  syncCropOverlay();
   actionBar.style.display = 'flex';
   applyAdjustments();
 }
@@ -1012,215 +1042,235 @@ function applySharpness(imgData, amount) {
 }
 
 // ── CROP ──
+const A4_RATIO = 1 / Math.sqrt(2); // width/height for A4 (portrait)
+let dragState = null; // { type: 'corner'|'edge', key, origin, rect }
+
+function clampRect(r) {
+  const w = mainCanvas.width;
+  const h = mainCanvas.height;
+  r.w = Math.max(20, Math.min(w - r.x, r.w));
+  r.h = Math.max(20, Math.min(h - r.y, r.h));
+  r.x = Math.max(0, Math.min(w - r.w, r.x));
+  r.y = Math.max(0, Math.min(h - r.h, r.y));
+  return r;
+}
+
+function syncCropOverlay() {
+  if (!mainCanvas || !cropOverlay) return;
+  const canvasRect = mainCanvas.getBoundingClientRect();
+  const wrapRect = canvasWrap.getBoundingClientRect();
+  cropOverlay.style.width = canvasRect.width + 'px';
+  cropOverlay.style.height = canvasRect.height + 'px';
+  cropOverlay.style.left = (canvasRect.left - wrapRect.left) + 'px';
+  cropOverlay.style.top = (canvasRect.top - wrapRect.top) + 'px';
+}
+
+window.addEventListener('resize', () => {
+  if (cropActive) syncCropOverlay();
+});
+
+function setupCrop() {
+  if (!originalImageData) return;
+  const w = mainCanvas.width;
+  const h = mainCanvas.height;
+  const maxW = w * 0.8;
+  const maxH = h * 0.8;
+  const fitH = Math.min(maxH, maxW / A4_RATIO);
+  const fitW = fitH * A4_RATIO;
+  const cx = w / 2;
+  const cy = h / 2;
+  cropRect = {
+    x: cx - fitW / 2,
+    y: cy - fitH / 2,
+    w: fitW,
+    h: fitH,
+  };
+
+  if (!cropHandles || !cropHandles.children.length) createCropHandles();
+  cropRectEl.style.display = 'block';
+  updateCropUI();
+}
+
 function enableCrop() {
   if (!originalImageData) return;
   cropActive = true;
+  setupCrop();
   cropOverlay.classList.add('active');
   document.getElementById('cropBtn').style.display = 'none';
   document.getElementById('applyCropBtn').style.display = 'flex';
   document.getElementById('cancelCropBtn').style.display = 'flex';
-  showToast('Draw a crop selection');
 }
 
 function cancelCrop() {
   cropActive = false;
-  isCropping = false;
   cropOverlay.classList.remove('active');
   cropRectEl.style.display = 'none';
   document.getElementById('cropBtn').style.display = 'flex';
   document.getElementById('applyCropBtn').style.display = 'none';
   document.getElementById('cancelCropBtn').style.display = 'none';
+  dragState = null;
 }
 
-function getCanvasPos(e, touch = false) {
-  const rect = mainCanvas.getBoundingClientRect();
-  const clientX = touch ? e.touches[0].clientX : e.clientX;
-  const clientY = touch ? e.touches[0].clientY : e.clientY;
-  return {
-    x: ((clientX - rect.left) / rect.width) * mainCanvas.width,
-    y: ((clientY - rect.top) / rect.height) * mainCanvas.height
+function createCropHandles() {
+  if (!cropHandles) return;
+  cropHandles.innerHTML = '';
+  const corners = ['tl', 'tr', 'br', 'bl'];
+  const edges = ['top', 'right', 'bottom', 'left'];
+
+  corners.forEach(k => {
+    const el = document.createElement('div');
+    el.className = 'crop-handle corner';
+    el.dataset.type = 'corner';
+    el.dataset.key = k;
+    el.style.pointerEvents = 'auto';
+    cropHandles.appendChild(el);
+  });
+
+  edges.forEach(k => {
+    const el = document.createElement('div');
+    el.className = 'crop-handle edge';
+    el.dataset.type = 'edge';
+    el.dataset.key = k;
+    el.style.pointerEvents = 'auto';
+    cropHandles.appendChild(el);
+  });
+}
+
+function updateCropUI() {
+  // Ensure overlay matches the canvas display size / position
+  syncCropOverlay();
+
+  const canvasRect = mainCanvas.getBoundingClientRect();
+  const overlayRect = cropOverlay.getBoundingClientRect();
+  const scaleX = canvasRect.width / mainCanvas.width;
+  const scaleY = canvasRect.height / mainCanvas.height;
+  const offsetX = canvasRect.left - overlayRect.left;
+  const offsetY = canvasRect.top - overlayRect.top;
+
+  const toOverlay = (pt) => ({
+    x: pt.x * scaleX + offsetX,
+    y: pt.y * scaleY + offsetY,
+  });
+
+  const rectOverlay = toOverlay({ x: cropRect.x, y: cropRect.y });
+  cropRectEl.style.left = rectOverlay.x + 'px';
+  cropRectEl.style.top = rectOverlay.y + 'px';
+  cropRectEl.style.width = cropRect.w * scaleX + 'px';
+  cropRectEl.style.height = cropRect.h * scaleY + 'px';
+
+  const mid = {
+    top: { x: cropRect.x + cropRect.w / 2, y: cropRect.y },
+    bottom: { x: cropRect.x + cropRect.w / 2, y: cropRect.y + cropRect.h },
+    left: { x: cropRect.x, y: cropRect.y + cropRect.h / 2 },
+    right: { x: cropRect.x + cropRect.w, y: cropRect.y + cropRect.h / 2 },
   };
+
+  Array.from(cropHandles.children).forEach(el => {
+    const type = el.dataset.type;
+    const key = el.dataset.key;
+    let pt;
+
+    if (type === 'corner') {
+      if (key === 'tl') pt = { x: cropRect.x, y: cropRect.y };
+      if (key === 'tr') pt = { x: cropRect.x + cropRect.w, y: cropRect.y };
+      if (key === 'br') pt = { x: cropRect.x + cropRect.w, y: cropRect.y + cropRect.h };
+      if (key === 'bl') pt = { x: cropRect.x, y: cropRect.y + cropRect.h };
+    } else {
+      pt = mid[key];
+    }
+
+    if (!pt) return;
+    const overlayPt = toOverlay(pt);
+    el.style.left = `${overlayPt.x}px`;
+    el.style.top = `${overlayPt.y}px`;
+  });
 }
 
-function getOverlayPos(e, touch = false) {
+function getOverlayPoint(e) {
   const rect = cropOverlay.getBoundingClientRect();
-  const clientX = touch ? e.touches[0].clientX : e.clientX;
-  const clientY = touch ? e.touches[0].clientY : e.clientY;
   return {
-    x: ((clientX - rect.left) / rect.width) * 100,
-    y: ((clientY - rect.top) / rect.height) * 100
+    x: (e.clientX - rect.left) / rect.width * mainCanvas.width,
+    y: (e.clientY - rect.top) / rect.height * mainCanvas.height,
   };
 }
 
 function startCrop(e) {
   if (!cropActive) return;
-  isCropping = true;
-  const pos = getOverlayPos(e);
-  cropStart = pos;
-
-  // Determine if user is dragging a handle (resize) or inside the rect (move).
   const target = e.target;
-  if (target.classList.contains('crop-handle')) {
-    isResizing = true;
-    resizeHandle = target.dataset.handle;
-    isMoving = false;
-  } else if (target.id === 'cropRect' || target.closest('#cropRect')) {
-    isMoving = true;
-    moveStart = pos;
-    isResizing = false;
-  } else {
-    isResizing = false;
-    isMoving = false;
-    cropRectEl.style.display = 'block';
-    updateCropRect(pos.x, pos.y, 0, 0);
-  }
-}
+  const type = target.dataset?.type;
+  const key = target.dataset?.key;
+  if (!type || !key) return;
 
-function startCropTouch(e) {
+  dragState = {
+    type,
+    key,
+    origin: getOverlayPoint(e),
+    rect: { ...cropRect },
+  };
   e.preventDefault();
-  if (!cropActive) return;
-  isCropping = true;
-  const pos = getOverlayPos(e, true);
-  cropStart = pos;
-
-  const target = e.target;
-  if (target.classList.contains('crop-handle')) {
-    isResizing = true;
-    resizeHandle = target.dataset.handle;
-    isMoving = false;
-  } else if (target.id === 'cropRect' || target.closest('#cropRect')) {
-    isMoving = true;
-    moveStart = pos;
-    isResizing = false;
-  } else {
-    isResizing = false;
-    isMoving = false;
-    cropRectEl.style.display = 'block';
-    updateCropRect(pos.x, pos.y, 0, 0);
-  }
 }
 
 function doCrop(e) {
-  if (!isCropping) return;
-  const pos = getOverlayPos(e);
-  if (isResizing) {
-    resizeCrop(pos);
-    return;
-  }
-  if (isMoving) {
-    moveCrop(pos);
-    return;
-  }
-  const x = Math.min(cropStart.x, pos.x);
-  const y = Math.min(cropStart.y, pos.y);
-  const w = Math.abs(pos.x - cropStart.x);
-  const h = Math.abs(pos.y - cropStart.y);
-  updateCropRect(x, y, w, h);
-}
+  if (!dragState || !cropActive) return;
+  const pt = getOverlayPoint(e);
+  const dx = pt.x - dragState.origin.x;
+  const dy = pt.y - dragState.origin.y;
 
-function doCropTouch(e) {
-  e.preventDefault();
-  if (!isCropping) return;
-  const pos = getOverlayPos(e, true);
-  if (isResizing) {
-    resizeCrop(pos);
-    return;
-  }
-  if (isMoving) {
-    moveCrop(pos);
-    return;
-  }
-  const x = Math.min(cropStart.x, pos.x);
-  const y = Math.min(cropStart.y, pos.y);
-  const w = Math.abs(pos.x - cropStart.x);
-  const h = Math.abs(pos.y - cropStart.y);
-  updateCropRect(x, y, w, h);
-}
+  const r = { ...dragState.rect };
+  const minSize = 20;
 
-function endCrop(e) {
-  if (!isCropping) return;
-  isCropping = false;
-  isResizing = false;
-  isMoving = false;
-  resizeHandle = null;
-  moveStart = null;
-
-  const pos = getOverlayPos(e);
-  cropRect.x = Math.min(cropStart.x, pos.x);
-  cropRect.y = Math.min(cropStart.y, pos.y);
-  cropRect.w = Math.abs(pos.x - cropStart.x);
-  cropRect.h = Math.abs(pos.y - cropStart.y);
-}
-
-function resizeCrop(pos) {
-  const minSize = 5; // percent
-  let { x, y, w, h } = cropRect;
-  const x2 = x + w;
-  const y2 = y + h;
-
-  switch (resizeHandle) {
-    case 'nw':
-      x = Math.min(pos.x, x2 - minSize);
-      y = Math.min(pos.y, y2 - minSize);
-      w = x2 - x;
-      h = y2 - y;
-      break;
-    case 'ne':
-      y = Math.min(pos.y, y2 - minSize);
-      w = Math.max(minSize, pos.x - x);
-      h = y2 - y;
-      break;
-    case 'sw':
-      x = Math.min(pos.x, x2 - minSize);
-      w = x2 - x;
-      h = Math.max(minSize, pos.y - y);
-      break;
-    case 'se':
-      w = Math.max(minSize, pos.x - x);
-      h = Math.max(minSize, pos.y - y);
-      break;
+  if (dragState.type === 'corner') {
+    switch (dragState.key) {
+      case 'tl':
+        r.x += dx; r.y += dy; r.w -= dx; r.h -= dy;
+        break;
+      case 'tr':
+        r.y += dy; r.w += dx; r.h -= dy;
+        break;
+      case 'br':
+        r.w += dx; r.h += dy;
+        break;
+      case 'bl':
+        r.x += dx; r.w -= dx; r.h += dy;
+        break;
+    }
+  } else {
+    switch (dragState.key) {
+      case 'top':
+        r.y += dy; r.h -= dy;
+        break;
+      case 'bottom':
+        r.h += dy;
+        break;
+      case 'left':
+        r.x += dx; r.w -= dx;
+        break;
+      case 'right':
+        r.w += dx;
+        break;
+    }
   }
 
-  // Clamp to overlay bounds
-  x = Math.max(0, Math.min(100 - w, x));
-  y = Math.max(0, Math.min(100 - h, y));
-
-  cropRect = { x, y, w, h };
-  updateCropRect(x, y, w, h);
+  r.w = Math.max(minSize, r.w);
+  r.h = Math.max(minSize, r.h);
+  clampRect(r);
+  cropRect = r;
+  updateCropUI();
 }
 
-function moveCrop(pos) {
-  const dx = pos.x - moveStart.x;
-  const dy = pos.y - moveStart.y;
-  let x = cropRect.x + dx;
-  let y = cropRect.y + dy;
-
-  x = Math.max(0, Math.min(100 - cropRect.w, x));
-  y = Math.max(0, Math.min(100 - cropRect.h, y));
-
-  cropRect.x = x;
-  cropRect.y = y;
-  moveStart = pos;
-  updateCropRect(x, y, cropRect.w, cropRect.h);
-}
-
-function updateCropRect(x, y, w, h) {
-  cropRectEl.style.left = x + '%';
-  cropRectEl.style.top = y + '%';
-  cropRectEl.style.width = w + '%';
-  cropRectEl.style.height = h + '%';
+function endCrop() {
+  dragState = null;
 }
 
 function applyCrop() {
-  if (!originalImageData || cropRect.w === 0 || cropRect.h === 0) return;
-  // Save current state to history for undo
+  if (!originalImageData || cropRect.w <= 0 || cropRect.h <= 0) return;
   history.push(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
-  const scaleX = originalImageData.width / 100;
-  const scaleY = originalImageData.height / 100;
-  const sx = cropRect.x * scaleX;
-  const sy = cropRect.y * scaleY;
-  const sw = cropRect.w * scaleX;
-  const sh = cropRect.h * scaleY;
+
+  const sx = Math.round(cropRect.x);
+  const sy = Math.round(cropRect.y);
+  const sw = Math.round(cropRect.w);
+  const sh = Math.round(cropRect.h);
+
   hiddenCanvas.width = sw;
   hiddenCanvas.height = sh;
   hctx.drawImage(mainCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
@@ -1244,42 +1294,45 @@ function undoCrop() {
 // ── MANUAL CROP ──
 function openManualCrop() {
   if (!originalImageData) return;
-  // Populate inputs with current crop or default
   const imgW = originalImageData.width;
   const imgH = originalImageData.height;
-  document.getElementById('cropX').value = Math.round(cropRect.x / 100 * imgW) || 0;
-  document.getElementById('cropY').value = Math.round(cropRect.y / 100 * imgH) || 0;
-  document.getElementById('cropW').value = Math.round(cropRect.w / 100 * imgW) || imgW;
-  document.getElementById('cropH').value = Math.round(cropRect.h / 100 * imgH) || imgH;
+  const x = cropRect.w > 0 ? cropRect.x : 0;
+  const y = cropRect.h > 0 ? cropRect.y : 0;
+  const w = cropRect.w > 0 ? cropRect.w : imgW;
+  const h = cropRect.h > 0 ? cropRect.h : imgH;
+  document.getElementById('cropX').value = Math.round(x);
+  document.getElementById('cropY').value = Math.round(y);
+  document.getElementById('cropW').value = Math.round(w);
+  document.getElementById('cropH').value = Math.round(h);
   document.getElementById('manualCropModal').classList.add('open');
 }
 
 function applyManualCrop() {
+  if (!originalImageData) return;
+
   const x = parseInt(document.getElementById('cropX').value) || 0;
   const y = parseInt(document.getElementById('cropY').value) || 0;
   const w = parseInt(document.getElementById('cropW').value) || 100;
   const h = parseInt(document.getElementById('cropH').value) || 100;
+
   const imgW = originalImageData.width;
   const imgH = originalImageData.height;
-  // Clamp values
   const clampedX = Math.max(0, Math.min(x, imgW - 1));
   const clampedY = Math.max(0, Math.min(y, imgH - 1));
   const clampedW = Math.max(1, Math.min(w, imgW - clampedX));
   const clampedH = Math.max(1, Math.min(h, imgH - clampedY));
-  cropRect = {
-    x: clampedX / imgW * 100,
-    y: clampedY / imgH * 100,
-    w: clampedW / imgW * 100,
-    h: clampedH / imgH * 100
-  };
-  updateCropRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
-  cropRectEl.style.display = 'block';
+
+  cropRect = { x: clampedX, y: clampedY, w: clampedW, h: clampedH };
   cropActive = true;
   cropOverlay.classList.add('active');
   document.getElementById('cropBtn').style.display = 'none';
   document.getElementById('applyCropBtn').style.display = 'flex';
   document.getElementById('cancelCropBtn').style.display = 'flex';
   document.getElementById('manualCropModal').classList.remove('open');
+
+  if (!cropHandles || !cropHandles.children.length) createCropHandles();
+  cropRectEl.style.display = 'block';
+  updateCropUI();
   showToast('Manual crop set!');
 }
 
@@ -1594,18 +1647,44 @@ if ('serviceWorker' in navigator) {
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  const btn = document.getElementById('installBtn');
-  if (btn) btn.style.display = 'flex';
+  showInstallButton();
   showToast('Install available! Tap the Install button to add to your device.');
 });
 
 window.addEventListener('appinstalled', () => {
-  const btn = document.getElementById('installBtn');
-  if (btn) btn.style.display = 'none';
+  hideInstallButton();
   showToast('App installed!');
 });
 
+function isIos() {
+  return /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+}
+
+function isInStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function showInstallButton() {
+  const btn = document.getElementById('installBtn');
+  if (!btn) return;
+  if (isInStandaloneMode()) {
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = 'flex';
+}
+
+function hideInstallButton() {
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'none';
+}
+
 function promptInstall() {
+  if (isIos() && !deferredPrompt) {
+    showToast('On iOS, tap Share » Add to Home Screen to install.');
+    return;
+  }
+
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
   deferredPrompt.userChoice.then((choiceResult) => {
@@ -1615,14 +1694,24 @@ function promptInstall() {
       showToast('Install dismissed');
     }
     deferredPrompt = null;
-    const btn = document.getElementById('installBtn');
-    if (btn) btn.style.display = 'none';
+    hideInstallButton();
   });
 }
 
 // ── INIT ──
 setStep(1);
 loadPagesFromStorage();
+checkPwaInstall();
+
+function checkPwaInstall() {
+  // Show install instructions for iOS Safari (no beforeinstallprompt event)
+  if (isIos() && !isInStandaloneMode()) {
+    showToast('Tip: In Safari, tap Share → Add to Home Screen to install.');
+    showInstallButton();
+  }
+}
+
+checkPwaInstall();
 </script>
 </body>
 </html>
