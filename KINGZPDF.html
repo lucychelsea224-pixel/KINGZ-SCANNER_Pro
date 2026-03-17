@@ -1,0 +1,1399 @@
+
+html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#e8ff47">
+<meta name="description" content="Advanced document scanning and enhancement app">
+<link rel="manifest" href="./manifest.json">
+<title>DocScan Pro</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0d0e11;
+    --surface: #16181d;
+    --surface2: #1e2128;
+    --border: #2a2d36;
+    --accent: #e8ff47;
+    --accent2: #47c8ff;
+    --accent3: #ff6b47;
+    --text: #f0f2f5;
+    --muted: #6b7280;
+    --success: #4ade80;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px; background: var(--accent);
+    border-radius: 6px; display: grid; place-items: center;
+  }
+  .logo-icon svg { width: 18px; height: 18px; }
+  .logo span.highlight { color: var(--accent); }
+
+  .header-steps {
+    display: flex; gap: 6px; align-items: center;
+  }
+  .step-pill {
+    padding: 5px 14px; border-radius: 20px; font-size: 0.72rem; font-weight: 600;
+    letter-spacing: 0.5px; text-transform: uppercase;
+    background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
+    transition: all .25s;
+    font-family: 'DM Mono', monospace;
+  }
+  .step-pill.active { background: var(--accent); color: #000; border-color: var(--accent); }
+  .step-pill.done { background: transparent; color: var(--success); border-color: var(--success); }
+
+  /* ── LAYOUT ── */
+  .app { display: grid; grid-template-columns: 1fr 300px; height: calc(100vh - 65px); }
+
+  /* ── MAIN CANVAS AREA ── */
+  .main-area {
+    display: flex; flex-direction: column;
+    padding: 24px; gap: 20px; overflow-y: auto;
+  }
+
+  /* ── SCAN ZONE ── */
+  #scanZone {
+    flex: 1;
+    background: var(--surface);
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    overflow: hidden;
+    min-height: 420px;
+    transition: border-color .3s;
+  }
+  #scanZone.drag-over { border-color: var(--accent); }
+
+  .scan-placeholder {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    text-align: center; padding: 40px;
+  }
+  .scan-placeholder .icon-ring {
+    width: 80px; height: 80px; border-radius: 50%;
+    border: 2px solid var(--border);
+    display: grid; place-items: center;
+    position: relative;
+  }
+  .scan-placeholder .icon-ring::before {
+    content: ''; position: absolute; inset: -8px;
+    border-radius: 50%; border: 1px dashed var(--border);
+    animation: spin 12s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .scan-placeholder h3 { font-size: 1.1rem; font-weight: 700; }
+  .scan-placeholder p { color: var(--muted); font-size: 0.85rem; max-width: 260px; line-height: 1.5; }
+
+  .capture-btns {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  }
+  .btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: 10px; font-size: 0.85rem; font-weight: 700;
+    font-family: 'Syne', sans-serif; cursor: pointer; border: none;
+    transition: all .2s; letter-spacing: 0.3px;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #d4eb00; transform: translateY(-1px); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text); }
+  .btn-danger { background: var(--accent3); color: #fff; }
+  .btn-danger:hover { opacity: 0.85; }
+  .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  /* ── VIDEO STREAM ── */
+  #videoWrap {
+    position: absolute; inset: 0; display: none;
+    align-items: center; justify-content: center;
+    background: #000;
+  }
+  #videoWrap.active { display: flex; }
+  #videoEl {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 14px;
+  }
+  .video-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: flex-end; padding: 20px;
+    background: linear-gradient(transparent 60%, rgba(0,0,0,0.7));
+  }
+  .corner-guides {
+    position: absolute; inset: 20px;
+    pointer-events: none;
+  }
+  .corner {
+    position: absolute; width: 28px; height: 28px;
+    border-color: var(--accent); border-style: solid; opacity: 0.9;
+  }
+  .corner.tl { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .corner.tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+  .corner.bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+  .corner.br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  .scan-line {
+    position: absolute; left: 20px; right: 20px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    top: 20px;
+    animation: scanMove 2.5s ease-in-out infinite;
+  }
+  @keyframes scanMove {
+    0%, 100% { top: 20px; }
+    50% { top: calc(100% - 22px); }
+  }
+
+  /* ── CANVAS / IMAGE PREVIEW ── */
+  #canvasWrap {
+    position: absolute; inset: 0; display: none;
+    align-items: center; justify-content: center;
+    background: #000; border-radius: 14px;
+  }
+  #canvasWrap.active { display: flex; }
+  #mainCanvas {
+    max-width: 100%; max-height: 100%; border-radius: 8px;
+    cursor: crosshair;
+  }
+  #hiddenCanvas { display: none; }
+  #effectCanvas { display: none; }
+
+  /* ── CROP OVERLAY ── */
+  #cropOverlay {
+    position: absolute; inset: 0; display: none;
+    cursor: crosshair;
+  }
+  #cropOverlay.active { display: block; }
+  #cropRect {
+    position: absolute; border: 2px solid var(--accent);
+    background: rgba(232,255,71,0.08);
+    pointer-events: none;
+  }
+  .crop-handle {
+    position: absolute; width: 10px; height: 10px;
+    background: var(--accent); border-radius: 2px;
+    transform: translate(-50%, -50%);
+  }
+
+  /* ── ACTION BAR ── */
+  .action-bar {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    padding: 14px 18px; background: var(--surface);
+    border-radius: 12px; border: 1px solid var(--border);
+  }
+  .action-bar .separator { width: 1px; height: 28px; background: var(--border); }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .sidebar-section {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-section h4 {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 14px; font-family: 'DM Mono', monospace;
+  }
+
+  /* ── EFFECTS GRID ── */
+  .effects-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  .effect-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 10px 6px; border-radius: 10px; cursor: pointer;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    transition: all .2s; font-family: 'Syne', sans-serif;
+  }
+  .effect-btn:hover { border-color: var(--accent2); }
+  .effect-btn.active { border-color: var(--accent); background: rgba(232,255,71,0.08); }
+  .effect-thumb {
+    width: 44px; height: 36px; border-radius: 6px;
+    overflow: hidden; background: #333; position: relative;
+  }
+  .effect-thumb canvas { width: 100%; height: 100%; }
+  .effect-btn span {
+    font-size: 0.62rem; font-weight: 600; color: var(--muted);
+    text-align: center; letter-spacing: 0.3px;
+  }
+  .effect-btn.active span { color: var(--accent); }
+
+  /* ── SLIDERS ── */
+  .slider-group { display: flex; flex-direction: column; gap: 12px; }
+  .slider-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .slider-row label {
+    font-size: 0.73rem; color: var(--muted); width: 80px; flex-shrink: 0;
+    font-family: 'DM Mono', monospace;
+  }
+  .slider-row input[type=range] {
+    flex: 1; appearance: none; -webkit-appearance: none; height: 3px;
+    background: var(--border); border-radius: 2px; cursor: pointer;
+  }
+  .slider-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--accent); cursor: pointer;
+  }
+  .slider-val {
+    font-size: 0.7rem; color: var(--accent); width: 30px;
+    text-align: right; font-family: 'DM Mono', monospace;
+  }
+
+  /* ── PAGES LIST ── */
+  .pages-list {
+    display: flex; flex-direction: column; gap: 8px;
+    max-height: 200px; overflow-y: auto;
+  }
+  .page-thumb {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px; border-radius: 8px; cursor: pointer;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    transition: all .2s;
+  }
+  .page-thumb:hover, .page-thumb.selected { border-color: var(--accent); }
+  .page-thumb img {
+    width: 38px; height: 50px; object-fit: cover;
+    border-radius: 4px; background: #333;
+  }
+  .page-info { flex: 1; }
+  .page-info .pname { font-size: 0.75rem; font-weight: 600; }
+  .page-info .psize { font-size: 0.65rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .page-del { color: var(--muted); cursor: pointer; padding: 4px; }
+  .page-del:hover { color: var(--accent3); }
+
+  /* ── EXPORT SECTION ── */
+  .export-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .export-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 14px 8px; border-radius: 10px; cursor: pointer;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    font-family: 'Syne', sans-serif; font-size: 0.72rem; font-weight: 700;
+    color: var(--text); letter-spacing: 0.4px; transition: all .2s;
+  }
+  .export-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .export-btn svg { width: 20px; height: 20px; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--surface); border: 1px solid var(--success);
+    color: var(--success); padding: 10px 20px; border-radius: 30px;
+    font-size: 0.82rem; font-weight: 600; letter-spacing: 0.4px;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    z-index: 999; pointer-events: none;
+    font-family: 'DM Mono', monospace;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── FILE INPUT ── */
+  #fileInput { display: none; }
+
+  /* ── MODAL ── */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    display: none; align-items: center; justify-content: center;
+    z-index: 200; backdrop-filter: blur(4px);
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px; width: 380px; max-width: 90vw;
+  }
+  .modal h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 6px; }
+  .modal p { color: var(--muted); font-size: 0.85rem; margin-bottom: 20px; line-height: 1.5; }
+  .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* ── NO DOC STATE ── */
+  .no-doc { display: flex; flex-direction: column; gap: 12px; align-items: center;
+    padding: 40px 20px; text-align: center; color: var(--muted); }
+  .no-doc svg { width: 40px; height: 40px; opacity: 0.3; }
+  .no-doc p { font-size: 0.82rem; }
+
+  @media (max-width: 700px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    header { padding: 14px 16px; }
+    .header-steps { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
+        <rect x="5" y="3" width="14" height="18" rx="2"/>
+        <path d="M9 7h6M9 11h6M9 15h4"/>
+      </svg>
+    </div>
+    Doc<span class="highlight">Scan</span> Pro
+  </div>
+  <div class="header-steps">
+    <div class="step-pill active" id="s1">01 Capture</div>
+    <div class="step-pill" id="s2">02 Crop</div>
+    <div class="step-pill" id="s3">03 Enhance</div>
+    <div class="step-pill" id="s4">04 Export</div>
+  </div>
+</header>
+
+<div class="app">
+  <!-- MAIN AREA -->
+  <div class="main-area">
+    <!-- SCAN ZONE -->
+    <div id="scanZone">
+      <!-- Placeholder -->
+      <div class="scan-placeholder" id="placeholder">
+        <div class="icon-ring">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+        <h3>Scan a Document</h3>
+        <p>Use your camera, upload an image, or drag & drop a file to get started</p>
+        <div class="capture-btns">
+          <button class="btn btn-primary" onclick="startCamera()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Use Camera
+          </button>
+          <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+            Upload Image
+          </button>
+        </div>
+      </div>
+
+      <!-- Video stream -->
+      <div id="videoWrap">
+        <video id="videoEl" autoplay playsinline muted></video>
+        <div class="corner-guides">
+          <div class="corner tl"></div>
+          <div class="corner tr"></div>
+          <div class="corner bl"></div>
+          <div class="corner br"></div>
+          <div class="scan-line"></div>
+        </div>
+        <div class="video-overlay">
+          <div style="display:flex;gap:10px;justify-content:center;">
+            <button class="btn btn-primary" onclick="capturePhoto()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="4"/>
+              </svg>
+              Capture
+            </button>
+            <button class="btn btn-ghost" onclick="stopCamera()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas preview -->
+      <div id="canvasWrap">
+        <canvas id="mainCanvas"></canvas>
+        <div id="cropOverlay" onmousedown="startCrop(event)" onmousemove="doCrop(event)" onmouseup="endCrop(event)"
+             ontouchstart="startCropTouch(event)" ontouchmove="doCropTouch(event)" ontouchend="endCrop(event)">
+          <div id="cropRect">
+            <div class="crop-handle" style="top:0;left:0;cursor:nw-resize"></div>
+            <div class="crop-handle" style="top:0;right:0;left:auto;cursor:ne-resize"></div>
+            <div class="crop-handle" style="bottom:0;top:auto;left:0;cursor:sw-resize"></div>
+            <div class="crop-handle" style="bottom:0;top:auto;right:0;left:auto;cursor:se-resize"></div>
+          </div>
+        </div>
+      </div>
+
+      <canvas id="hiddenCanvas"></canvas>
+      <canvas id="effectCanvas"></canvas>
+    </div>
+
+    <!-- ACTION BAR -->
+    <div class="action-bar" id="actionBar" style="display:none">
+      <button class="btn btn-secondary" onclick="enableCrop()" id="cropBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6.13 1L6 16a2 2 0 002 2h15"/>
+          <path d="M1 6.13L16 6a2 2 0 012 2v15"/>
+        </svg>
+        Crop
+      </button>
+      <button class="btn btn-secondary" id="applyCropBtn" onclick="applyCrop()" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        Apply
+      </button>
+      <button class="btn btn-ghost" id="cancelCropBtn" onclick="cancelCrop()" style="display:none">Cancel</button>
+      <button class="btn btn-secondary" onclick="undoCrop()" id="undoCropBtn" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 14 4 9 9 4"/>
+          <path d="M20 20v-7a4 4 0 00-4-4H4"/>
+        </svg>
+        Undo Crop
+      </button>
+      <button class="btn btn-secondary" onclick="openManualCrop()" id="manualCropBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <line x1="9" y1="9" x2="15" y2="15"/>
+          <line x1="15" y1="9" x2="9" y2="15"/>
+        </svg>
+        Manual Crop
+      </button>
+      <div class="separator"></div>
+      <button class="btn btn-secondary" onclick="rotateImage(-90)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="1 4 1 10 7 10"/>
+          <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+        </svg>
+        Rotate L
+      </button>
+      <button class="btn btn-secondary" onclick="rotateImage(90)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+        </svg>
+        Rotate R
+      </button>
+      <div class="separator"></div>
+      <button class="btn btn-secondary" onclick="addPage()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        Add Page
+      </button>
+      <button class="btn btn-ghost" onclick="resetAll()" style="margin-left:auto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="1 4 1 10 7 10"/>
+          <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+        </svg>
+        New Scan
+      </button>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <!-- EFFECTS -->
+    <div class="sidebar-section">
+      <h4>Effects</h4>
+      <div class="effects-grid" id="effectsGrid">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <!-- ADJUSTMENTS -->
+    <div class="sidebar-section">
+      <h4>Adjustments</h4>
+      <div class="slider-group">
+        <div class="slider-row">
+          <label>Brightness</label>
+          <input type="range" id="brightness" min="-100" max="100" value="0" oninput="applyAdjustments()">
+          <span class="slider-val" id="brightnessVal">0</span>
+        </div>
+        <div class="slider-row">
+          <label>Contrast</label>
+          <input type="range" id="contrast" min="-100" max="100" value="0" oninput="applyAdjustments()">
+          <span class="slider-val" id="contrastVal">0</span>
+        </div>
+        <div class="slider-row">
+          <label>Sharpness</label>
+          <input type="range" id="sharpness" min="0" max="10" value="0" oninput="applyAdjustments()">
+          <span class="slider-val" id="sharpnessVal">0</span>
+        </div>
+        <div class="slider-row">
+          <label>Saturation</label>
+          <input type="range" id="saturation" min="-100" max="100" value="0" oninput="applyAdjustments()">
+          <span class="slider-val" id="saturationVal">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGES -->
+    <div class="sidebar-section" style="flex:1">
+      <h4>Pages (<span id="pageCount">0</span>)</h4>
+      <div class="pages-list" id="pagesList">
+        <div class="no-doc">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <p>No pages yet</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPORT -->
+    <div class="sidebar-section">
+      <h4>Export & Share</h4>
+      <div class="export-grid">
+        <button class="export-btn" onclick="downloadPNG()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          PNG
+        </button>
+        <button class="export-btn" onclick="downloadJPEG()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          JPEG
+        </button>
+        <button class="export-btn" onclick="downloadPDF()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <path d="M9 13h6M9 17h4"/>
+          </svg>
+          PDF
+        </button>
+        <button class="export-btn" onclick="shareDoc()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Share
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="fileInput" accept="image/*" onchange="loadFile(event)">
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Share modal -->
+<div class="modal-bg" id="shareModal">
+  <div class="modal">
+    <h3>Share Document</h3>
+    <p>Choose how you'd like to share this document. The file will be prepared for sharing.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+      <button class="btn btn-secondary" onclick="shareViaWebShare()" id="webShareBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+        Share via System...
+      </button>
+      <button class="btn btn-secondary" onclick="copyImageLink()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+        </svg>
+        Copy as PNG to Clipboard
+      </button>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="document.getElementById('shareModal').classList.remove('open')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manual crop modal -->
+<div class="modal-bg" id="manualCropModal">
+  <div class="modal">
+    <h3>Manual Crop</h3>
+    <p>Set crop dimensions in pixels.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+      <label>Left (X): <input type="number" id="cropX" min="0" step="1"></label>
+      <label>Top (Y): <input type="number" id="cropY" min="0" step="1"></label>
+      <label>Width: <input type="number" id="cropW" min="1" step="1"></label>
+      <label>Height: <input type="number" id="cropH" min="1" step="1"></label>
+      <button class="btn btn-secondary" onclick="setA4Crop()">Fit to A4 Aspect</button>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="applyManualCrop()">Apply Crop</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('manualCropModal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let stream = null;
+let originalImageData = null; // ImageData of original capture
+let currentImageData = null;  // ImageData after effects
+let pages = [];
+let selectedPage = -1;
+let currentEffect = 'original';
+let cropActive = false;
+let cropStart = null;
+let cropRect = { x: 0, y: 0, w: 0, h: 0 };
+let isCropping = false;
+let history = []; // for undo
+
+// Adjustments
+let adjustments = { brightness: 0, contrast: 0, sharpness: 0, saturation: 0 };
+
+// ── ELEMENTS ──
+const video = document.getElementById('videoEl');
+const videoWrap = document.getElementById('videoWrap');
+const canvasWrap = document.getElementById('canvasWrap');
+const mainCanvas = document.getElementById('mainCanvas');
+const ctx = mainCanvas.getContext('2d');
+const hiddenCanvas = document.getElementById('hiddenCanvas');
+const hctx = hiddenCanvas.getContext('2d');
+const cropOverlay = document.getElementById('cropOverlay');
+const cropRectEl = document.getElementById('cropRect');
+const placeholder = document.getElementById('placeholder');
+const actionBar = document.getElementById('actionBar');
+const scanZone = document.getElementById('scanZone');
+
+// ── EFFECTS DEFINITION ──
+const effects = [
+  { id: 'original', label: 'Original', fn: (d) => d },
+  { id: 'enhance', label: 'Enhance', fn: enhanceEffect },
+  { id: 'bw', label: 'B&W', fn: bwEffect },
+  { id: 'bw_contrast', label: 'Document', fn: documentEffect },
+  { id: 'grayscale', label: 'Grayscale', fn: grayscaleEffect },
+  { id: 'warm', label: 'Warm', fn: warmEffect },
+  { id: 'cool', label: 'Cool', fn: coolEffect },
+  { id: 'vivid', label: 'Vivid', fn: vividEffect },
+  { id: 'vintage', label: 'Vintage', fn: vintageEffect },
+];
+
+// ── BUILD EFFECT THUMBNAILS ──
+function buildEffectGrid() {
+  const grid = document.getElementById('effectsGrid');
+  grid.innerHTML = '';
+  effects.forEach(e => {
+    const btn = document.createElement('div');
+    btn.className = 'effect-btn' + (e.id === currentEffect ? ' active' : '');
+    btn.id = 'eff_' + e.id;
+    btn.onclick = () => applyEffect(e.id);
+    const thumb = document.createElement('div');
+    thumb.className = 'effect-thumb';
+    // small demo gradient canvas
+    const tc = document.createElement('canvas');
+    tc.width = 44; tc.height = 36;
+    const tctx = tc.getContext('2d');
+    // draw a simple doc demo
+    tctx.fillStyle = '#444';
+    tctx.fillRect(0, 0, 44, 36);
+    tctx.fillStyle = '#888';
+    tctx.fillRect(4, 4, 36, 28);
+    tctx.fillStyle = '#ccc';
+    for (let i = 0; i < 4; i++) tctx.fillRect(8, 8 + i * 6, 28, 2);
+    const id = tctx.getImageData(0, 0, 44, 36);
+    const processed = e.fn(id);
+    tctx.putImageData(processed, 0, 0);
+    thumb.appendChild(tc);
+    const label = document.createElement('span');
+    label.textContent = e.label;
+    btn.appendChild(thumb);
+    btn.appendChild(label);
+    grid.appendChild(btn);
+  });
+}
+buildEffectGrid();
+
+// ── CAMERA ──
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+    video.srcObject = stream;
+    placeholder.style.display = 'none';
+    videoWrap.classList.add('active');
+    setStep(1);
+  } catch(e) {
+    showToast('Camera access denied or not available');
+  }
+}
+
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  videoWrap.classList.remove('active');
+  if (!originalImageData) placeholder.style.display = 'flex';
+}
+
+function capturePhoto() {
+  const w = video.videoWidth || 640;
+  const h = video.videoHeight || 480;
+  hiddenCanvas.width = w; hiddenCanvas.height = h;
+  hctx.drawImage(video, 0, 0, w, h);
+  originalImageData = hctx.getImageData(0, 0, w, h);
+  stopCamera();
+  showImage(originalImageData);
+  setStep(2);
+  showToast('Photo captured!');
+}
+
+// ── FILE UPLOAD ──
+function loadFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      hiddenCanvas.width = img.width; hiddenCanvas.height = img.height;
+      hctx.drawImage(img, 0, 0);
+      originalImageData = hctx.getImageData(0, 0, img.width, img.height);
+      showImage(originalImageData);
+      setStep(2);
+      showToast('Image loaded!');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+// ── DRAG & DROP ──
+scanZone.addEventListener('dragover', e => { e.preventDefault(); scanZone.classList.add('drag-over'); });
+scanZone.addEventListener('dragleave', () => scanZone.classList.remove('drag-over'));
+scanZone.addEventListener('drop', e => {
+  e.preventDefault(); scanZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const fakeEvt = { target: { files: [file], value: '' } };
+    loadFile(fakeEvt);
+  }
+});
+
+// ── SHOW IMAGE ──
+function showImage(imgData) {
+  placeholder.style.display = 'none';
+  videoWrap.classList.remove('active');
+
+  const maxW = scanZone.clientWidth - 32;
+  const maxH = scanZone.clientHeight - 32;
+  const scale = Math.min(maxW / imgData.width, maxH / imgData.height, 1);
+  mainCanvas.width = imgData.width;
+  mainCanvas.height = imgData.height;
+  mainCanvas.style.maxWidth = maxW + 'px';
+  mainCanvas.style.maxHeight = maxH + 'px';
+
+  ctx.putImageData(imgData, 0, 0);
+  currentImageData = imgData;
+  canvasWrap.classList.add('active');
+  actionBar.style.display = 'flex';
+  applyAdjustments();
+}
+
+// ── EFFECTS ──
+function enhanceEffect(imgData) {
+  const d = new ImageData(new Uint8ClampedArray(imgData.data), imgData.width, imgData.height);
+  applyContrastBrightness(d.data, 20, 15);
+  applySaturation(d.data, 20);
+  return d;
+}
+
+function bwEffect(imgData) {
+  const d = new ImageData(new Uint8ClampedArray(imgData.data), imgData.width, imgData.height);
+  const data = d.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const g = data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114;
+    const bw = g > 128 ? 255 : 0;
+    data[i] = data[i+1] = data[i+2] = bw;
+  }
+  return d;
+}
+
+function documentEffect(imgData) {
+  const d = new ImageData(new Uint8ClampedArray(imgData.data), imgData.width, imgData.height);
+  const data = d.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const g = data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114;
+    // threshold with adaptive-like approach
+    let v = g > 160 ? Math.min(255, g * 1.2) : Math.max(0, g * 0.3);
+    data[i] = data[i+1] = data[i+2] = v;
+  }
+  applyContrastBrightness(data, 40, 0);
+  return d;
+}
+
+function grayscaleEffect(imgData) {
+  const d = new ImageData(new Uint8ClampedArray(imgData.data), imgData.width, imgData.height);
+  const data = d.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const g = data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114;
+    data[i] = data[i+1] = data[i+2] = g;
+  }
+  return d;
+}
+
+function warmEffect(imgData) {
+  const d = new ImageData(new Uint8ClampedArray(imgData.data), imgData.width, imgData.height);
+  const data = d.data;
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = Math.min(255, data[i] * 1.1 + 15);
+    data[i+1] = Math.min(255, data[i+1] * 1.05);
+    data[i+2] = Math.max(0, data[i+2] * 0.85);
+  }
+  return d;
+}
+
+function coolEffect(imgData) {
+  const d = new ImageData(new Uint8ClampedArray(imgData.data), imgData.width, imgData.height);
+  const data = d.data;
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = Math.max(0, data[i] * 0.85);
+    data[i+1] = Math.min(255, data[i+1] * 1.03);
+    data[i+2] = Math.min(255, data[i+2] * 1.15 + 10);
+  }
+  return d;
+}
+
+function vividEffect(imgData) {
+  const d = new ImageData(new Uint8ClampedArray(imgData.data), imgData.width, imgData.height);
+  applySaturation(d.data, 50);
+  applyContrastBrightness(d.data, 15, 5);
+  return d;
+}
+
+function vintageEffect(imgData) {
+  const d = new ImageData(new Uint8ClampedArray(imgData.data), imgData.width, imgData.height);
+  const data = d.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i+1], b = data[i+2];
+    data[i]   = Math.min(255, r * 0.9 + g * 0.1 + 40);
+    data[i+1] = Math.min(255, r * 0.05 + g * 0.8 + b * 0.05 + 15);
+    data[i+2] = Math.min(255, r * 0.05 + g * 0.1 + b * 0.75 + 5);
+  }
+  applyContrastBrightness(data, -10, -10);
+  return d;
+}
+
+function applyContrastBrightness(data, contrast, brightness) {
+  const cf = (contrast / 100) + 1;
+  const bf = brightness;
+  for (let i = 0; i < data.length; i += 4) {
+    data[i]   = Math.max(0, Math.min(255, cf * (data[i]   - 128) + 128 + bf));
+    data[i+1] = Math.max(0, Math.min(255, cf * (data[i+1] - 128) + 128 + bf));
+    data[i+2] = Math.max(0, Math.min(255, cf * (data[i+2] - 128) + 128 + bf));
+  }
+}
+
+function applySaturation(data, amount) {
+  const s = 1 + amount / 100;
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+    data[i]   = Math.max(0, Math.min(255, gray + s * (data[i]   - gray)));
+    data[i+1] = Math.max(0, Math.min(255, gray + s * (data[i+1] - gray)));
+    data[i+2] = Math.max(0, Math.min(255, gray + s * (data[i+2] - gray)));
+  }
+}
+
+function applyEffect(id) {
+  if (!originalImageData) return;
+  currentEffect = id;
+  document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('eff_' + id);
+  if (btn) btn.classList.add('active');
+  applyAdjustments();
+  setStep(3);
+}
+
+function applyAdjustments() {
+  if (!originalImageData) return;
+
+  // Read sliders
+  const bval = parseInt(document.getElementById('brightness').value);
+  const cval = parseInt(document.getElementById('contrast').value);
+  const sval = parseInt(document.getElementById('sharpness').value);
+  const satval = parseInt(document.getElementById('saturation').value);
+  document.getElementById('brightnessVal').textContent = bval;
+  document.getElementById('contrastVal').textContent = cval;
+  document.getElementById('sharpnessVal').textContent = sval;
+  document.getElementById('saturationVal').textContent = satval;
+
+  // Apply effect first
+  const effFn = effects.find(e => e.id === currentEffect)?.fn || (d => d);
+  let processed = effFn(originalImageData);
+
+  // Apply adjustments
+  const adj = new ImageData(new Uint8ClampedArray(processed.data), processed.width, processed.height);
+  if (bval !== 0 || cval !== 0) applyContrastBrightness(adj.data, cval, bval);
+  if (satval !== 0) applySaturation(adj.data, satval);
+
+  // Sharpness (simple unsharp mask)
+  if (sval > 0) {
+    applySharpness(adj, sval);
+  }
+
+  currentImageData = adj;
+  mainCanvas.width = adj.width;
+  mainCanvas.height = adj.height;
+  ctx.putImageData(adj, 0, 0);
+}
+
+function applySharpness(imgData, amount) {
+  const w = imgData.width, h = imgData.height, d = imgData.data;
+  const copy = new Uint8ClampedArray(d);
+  const k = amount * 0.15;
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = (y * w + x) * 4;
+      for (let c = 0; c < 3; c++) {
+        const lap = -copy[i + c]
+          + copy[((y-1)*w+x)*4+c] + copy[((y+1)*w+x)*4+c]
+          + copy[(y*w+x-1)*4+c] + copy[(y*w+x+1)*4+c];
+        d[i+c] = Math.max(0, Math.min(255, copy[i+c] + k * (copy[i+c] - lap / 4)));
+      }
+    }
+  }
+}
+
+// ── CROP ──
+function enableCrop() {
+  if (!originalImageData) return;
+  cropActive = true;
+  cropOverlay.classList.add('active');
+  document.getElementById('cropBtn').style.display = 'none';
+  document.getElementById('applyCropBtn').style.display = 'flex';
+  document.getElementById('cancelCropBtn').style.display = 'flex';
+  showToast('Draw a crop selection');
+}
+
+function cancelCrop() {
+  cropActive = false;
+  isCropping = false;
+  cropOverlay.classList.remove('active');
+  cropRectEl.style.display = 'none';
+  document.getElementById('cropBtn').style.display = 'flex';
+  document.getElementById('applyCropBtn').style.display = 'none';
+  document.getElementById('cancelCropBtn').style.display = 'none';
+}
+
+function getCanvasPos(e, touch = false) {
+  const rect = mainCanvas.getBoundingClientRect();
+  const clientX = touch ? e.touches[0].clientX : e.clientX;
+  const clientY = touch ? e.touches[0].clientY : e.clientY;
+  return {
+    x: ((clientX - rect.left) / rect.width) * mainCanvas.width,
+    y: ((clientY - rect.top) / rect.height) * mainCanvas.height
+  };
+}
+
+function getOverlayPos(e, touch = false) {
+  const rect = cropOverlay.getBoundingClientRect();
+  const clientX = touch ? e.touches[0].clientX : e.clientX;
+  const clientY = touch ? e.touches[0].clientY : e.clientY;
+  return {
+    x: ((clientX - rect.left) / rect.width) * 100,
+    y: ((clientY - rect.top) / rect.height) * 100
+  };
+}
+
+function startCrop(e) {
+  if (!cropActive) return;
+  isCropping = true;
+  const pos = getOverlayPos(e);
+  cropStart = pos;
+  cropRectEl.style.display = 'block';
+  updateCropRect(pos.x, pos.y, 0, 0);
+}
+function startCropTouch(e) {
+  e.preventDefault();
+  if (!cropActive) return;
+  isCropping = true;
+  const pos = getOverlayPos(e, true);
+  cropStart = pos;
+  cropRectEl.style.display = 'block';
+  updateCropRect(pos.x, pos.y, 0, 0);
+}
+
+function doCrop(e) {
+  if (!isCropping) return;
+  const pos = getOverlayPos(e);
+  const x = Math.min(cropStart.x, pos.x);
+  const y = Math.min(cropStart.y, pos.y);
+  const w = Math.abs(pos.x - cropStart.x);
+  const h = Math.abs(pos.y - cropStart.y);
+  updateCropRect(x, y, w, h);
+}
+
+function doCropTouch(e) {
+  e.preventDefault();
+  if (!isCropping) return;
+  const pos = getOverlayPos(e, true);
+  const x = Math.min(cropStart.x, pos.x);
+  const y = Math.min(cropStart.y, pos.y);
+  const w = Math.abs(pos.x - cropStart.x);
+  const h = Math.abs(pos.y - cropStart.y);
+  updateCropRect(x, y, w, h);
+}
+
+function endCrop(e) {
+  if (!isCropping) return;
+  isCropping = false;
+  const pos = getOverlayPos(e);
+  cropRect.x = Math.min(cropStart.x, pos.x);
+  cropRect.y = Math.min(cropStart.y, pos.y);
+  cropRect.w = Math.abs(pos.x - cropStart.x);
+  cropRect.h = Math.abs(pos.y - cropStart.y);
+}
+
+function updateCropRect(x, y, w, h) {
+  cropRectEl.style.left = x + '%';
+  cropRectEl.style.top = y + '%';
+  cropRectEl.style.width = w + '%';
+  cropRectEl.style.height = h + '%';
+}
+
+function applyCrop() {
+  if (!originalImageData || cropRect.w === 0 || cropRect.h === 0) return;
+  // Save current state to history for undo
+  history.push(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
+  const scaleX = originalImageData.width / 100;
+  const scaleY = originalImageData.height / 100;
+  const sx = cropRect.x * scaleX;
+  const sy = cropRect.y * scaleY;
+  const sw = cropRect.w * scaleX;
+  const sh = cropRect.h * scaleY;
+  hiddenCanvas.width = sw;
+  hiddenCanvas.height = sh;
+  hctx.drawImage(mainCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+  originalImageData = hctx.getImageData(0, 0, sw, sh);
+  cancelCrop();
+  showImage(originalImageData);
+  document.getElementById('undoCropBtn').style.display = 'flex';
+  showToast('Cropped!');
+}
+
+// ── UNDO CROP ──
+function undoCrop() {
+  if (history.length > 0) {
+    originalImageData = history.pop();
+    showImage(originalImageData);
+    document.getElementById('undoCropBtn').style.display = history.length > 0 ? 'flex' : 'none';
+    showToast('Crop undone!');
+  }
+}
+
+// ── MANUAL CROP ──
+function openManualCrop() {
+  if (!originalImageData) return;
+  // Populate inputs with current crop or default
+  const imgW = originalImageData.width;
+  const imgH = originalImageData.height;
+  document.getElementById('cropX').value = Math.round(cropRect.x / 100 * imgW) || 0;
+  document.getElementById('cropY').value = Math.round(cropRect.y / 100 * imgH) || 0;
+  document.getElementById('cropW').value = Math.round(cropRect.w / 100 * imgW) || imgW;
+  document.getElementById('cropH').value = Math.round(cropRect.h / 100 * imgH) || imgH;
+  document.getElementById('manualCropModal').classList.add('open');
+}
+
+function applyManualCrop() {
+  const x = parseInt(document.getElementById('cropX').value) || 0;
+  const y = parseInt(document.getElementById('cropY').value) || 0;
+  const w = parseInt(document.getElementById('cropW').value) || 100;
+  const h = parseInt(document.getElementById('cropH').value) || 100;
+  const imgW = originalImageData.width;
+  const imgH = originalImageData.height;
+  // Clamp values
+  const clampedX = Math.max(0, Math.min(x, imgW - 1));
+  const clampedY = Math.max(0, Math.min(y, imgH - 1));
+  const clampedW = Math.max(1, Math.min(w, imgW - clampedX));
+  const clampedH = Math.max(1, Math.min(h, imgH - clampedY));
+  cropRect = {
+    x: clampedX / imgW * 100,
+    y: clampedY / imgH * 100,
+    w: clampedW / imgW * 100,
+    h: clampedH / imgH * 100
+  };
+  updateCropRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+  cropRectEl.style.display = 'block';
+  cropActive = true;
+  cropOverlay.classList.add('active');
+  document.getElementById('cropBtn').style.display = 'none';
+  document.getElementById('applyCropBtn').style.display = 'flex';
+  document.getElementById('cancelCropBtn').style.display = 'flex';
+  document.getElementById('manualCropModal').classList.remove('open');
+  showToast('Manual crop set!');
+}
+
+function setA4Crop() {
+  if (!originalImageData) return;
+  const ratio = Math.sqrt(2); // A4 aspect ratio h/w
+  const imgW = originalImageData.width;
+  const imgH = originalImageData.height;
+  let x, y, w, h;
+  if (imgW / imgH > ratio) {
+    // Fit height, center width
+    h = imgH;
+    w = h / ratio;
+    x = (imgW - w) / 2;
+    y = 0;
+  } else {
+    // Fit width, center height
+    w = imgW;
+    h = w * ratio;
+    x = 0;
+    y = (imgH - h) / 2;
+  }
+  // Set inputs
+  document.getElementById('cropX').value = Math.round(x);
+  document.getElementById('cropY').value = Math.round(y);
+  document.getElementById('cropW').value = Math.round(w);
+  document.getElementById('cropH').value = Math.round(h);
+}
+
+// ── ROTATE ──
+function rotateImage(deg) {
+  if (!originalImageData) return;
+  const w = originalImageData.width;
+  const h = originalImageData.height;
+  hiddenCanvas.width = h;
+  hiddenCanvas.height = w;
+  hctx.save();
+  hctx.translate(h / 2, w / 2);
+  hctx.rotate(deg * Math.PI / 180);
+  hctx.drawImage(mainCanvas, -w / 2, -h / 2);
+  hctx.restore();
+  originalImageData = hctx.getImageData(0, 0, h, w);
+  showImage(originalImageData);
+  showToast('Rotated!');
+}
+
+// ── PAGES ──
+function addPage() {
+  if (!currentImageData) return;
+  const page = {
+    data: new ImageData(new Uint8ClampedArray(currentImageData.data), currentImageData.width, currentImageData.height),
+    thumb: createThumbnail(currentImageData)
+  };
+  pages.push(page);
+  selectedPage = pages.length - 1;
+  updatePagesList();
+  showToast('Page added!');
+}
+
+function createThumbnail(imgData) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 38;
+  canvas.height = 50;
+  const ctx = canvas.getContext('2d');
+  const scale = Math.min(38 / imgData.width, 50 / imgData.height);
+  const sw = imgData.width * scale;
+  const sh = imgData.height * scale;
+  ctx.drawImage(mainCanvas, 0, 0, imgData.width, imgData.height, (38 - sw) / 2, (50 - sh) / 2, sw, sh);
+  return canvas.toDataURL();
+}
+
+function updatePagesList() {
+  const list = document.getElementById('pagesList');
+  list.innerHTML = '';
+  if (pages.length === 0) {
+    list.innerHTML = '<div class="no-doc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No pages yet</p></div>';
+    return;
+  }
+  pages.forEach((p, i) => {
+    const item = document.createElement('div');
+    item.className = 'page-thumb' + (i === selectedPage ? ' selected' : '');
+    item.onclick = () => selectPage(i);
+    const img = document.createElement('img');
+    img.src = p.thumb;
+    const info = document.createElement('div');
+    info.className = 'page-info';
+    info.innerHTML = `<div class="pname">Page ${i+1}</div><div class="psize">${p.data.width}x${p.data.height}</div>`;
+    const del = document.createElement('div');
+    del.className = 'page-del';
+    del.innerHTML = '×';
+    del.onclick = (e) => { e.stopPropagation(); deletePage(i); };
+    item.appendChild(img);
+    item.appendChild(info);
+    item.appendChild(del);
+    list.appendChild(item);
+  });
+  document.getElementById('pageCount').textContent = pages.length;
+}
+
+function selectPage(i) {
+  selectedPage = i;
+  originalImageData = pages[i].data;
+  currentImageData = new ImageData(new Uint8ClampedArray(pages[i].data.data), pages[i].data.width, pages[i].data.height);
+  showImage(currentImageData);
+  updatePagesList();
+}
+
+function deletePage(i) {
+  pages.splice(i, 1);
+  if (selectedPage >= pages.length) selectedPage = pages.length - 1;
+  if (pages.length === 0) {
+    resetAll();
+  } else {
+    selectPage(selectedPage);
+  }
+  updatePagesList();
+}
+
+// ── RESET ──
+function resetAll() {
+  originalImageData = null;
+  currentImageData = null;
+  pages = [];
+  selectedPage = -1;
+  currentEffect = 'original';
+  cropActive = false;
+  history = [];
+  adjustments = { brightness: 0, contrast: 0, sharpness: 0, saturation: 0 };
+  document.getElementById('brightness').value = 0;
+  document.getElementById('contrast').value = 0;
+  document.getElementById('sharpness').value = 0;
+  document.getElementById('saturation').value = 0;
+  document.getElementById('brightnessVal').textContent = '0';
+  document.getElementById('contrastVal').textContent = '0';
+  document.getElementById('sharpnessVal').textContent = '0';
+  document.getElementById('saturationVal').textContent = '0';
+  cancelCrop();
+  document.getElementById('undoCropBtn').style.display = 'none';
+  canvasWrap.classList.remove('active');
+  actionBar.style.display = 'none';
+  placeholder.style.display = 'flex';
+  updatePagesList();
+  setStep(1);
+  showToast('Reset!');
+}
+
+// ── EXPORT ──
+function downloadPNG() {
+  if (!currentImageData) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = currentImageData.width;
+  canvas.height = currentImageData.height;
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(currentImageData, 0, 0);
+  const link = document.createElement('a');
+  link.download = 'scan.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('PNG downloaded!');
+}
+
+function downloadJPEG() {
+  if (!currentImageData) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = currentImageData.width;
+  canvas.height = currentImageData.height;
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(currentImageData, 0, 0);
+  const link = document.createElement('a');
+  link.download = 'scan.jpg';
+  link.href = canvas.toDataURL('image/jpeg', 0.9);
+  link.click();
+  showToast('JPEG downloaded!');
+}
+
+function downloadPDF() {
+  if (pages.length === 0) return;
+  // Simple PDF generation using jsPDF (assuming it's loaded, but since it's not, this is placeholder)
+  // For real implementation, include jsPDF library
+  showToast('PDF export not implemented in this demo');
+}
+
+function shareDoc() {
+  document.getElementById('shareModal').classList.add('open');
+}
+
+async function shareViaWebShare() {
+  if (!currentImageData || !navigator.share) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = currentImageData.width;
+  canvas.height = currentImageData.height;
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(currentImageData, 0, 0);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  const file = new File([blob], 'scan.png', { type: 'image/png' });
+  try {
+    await navigator.share({ files: [file], title: 'Scanned Document' });
+    showToast('Shared!');
+  } catch (e) {
+    showToast('Share failed');
+  }
+}
+
+async function copyImageLink() {
+  if (!currentImageData) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = currentImageData.width;
+  canvas.height = currentImageData.height;
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(currentImageData, 0, 0);
+  try {
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    showToast('Copied to clipboard!');
+  } catch (e) {
+    showToast('Copy failed');
+  }
+}
+
+// ── UTILS ──
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+function setStep(n) {
+  document.querySelectorAll('.step-pill').forEach((p, i) => {
+    p.classList.remove('active', 'done');
+    if (i + 1 < n) p.classList.add('done');
+    else if (i + 1 === n) p.classList.add('active');
+  });
+}
+
+// ── PWA SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(registration => console.log('SW registered'))
+      .catch(error => console.log('SW registration failed'));
+  });
+}
+
+// ── INIT ──
+setStep(1);
+</script>
+</body>
+</html>
+ 
