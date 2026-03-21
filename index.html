@@ -1508,10 +1508,19 @@ let dragState = null; // { type: 'corner'|'edge', key, origin, rect }
 function clampRect(r) {
   const w = mainCanvas.width;
   const h = mainCanvas.height;
+  
+  // Ensure crop box doesn't go outside image bounds
+  r.x = Math.max(0, r.x);
+  r.y = Math.max(0, r.y);
+  
+  // Constrain width and height to stay within image
   r.w = Math.max(20, Math.min(w - r.x, r.w));
   r.h = Math.max(20, Math.min(h - r.y, r.h));
+  
+  // Ensure top-left stays within bounds even after width/height adjustment
   r.x = Math.max(0, Math.min(w - r.w, r.x));
   r.y = Math.max(0, Math.min(h - r.h, r.y));
+  
   return r;
 }
 
@@ -1539,12 +1548,16 @@ function setupCrop() {
   const fitW = fitH * A4_RATIO;
   const cx = w / 2;
   const cy = h / 2;
+  
   cropRect = {
     x: cx - fitW / 2,
     y: cy - fitH / 2,
     w: fitW,
     h: fitH,
   };
+  
+  // Ensure initial crop rect is within bounds
+  clampRect(cropRect);
 
   if (!cropHandles || !cropHandles.children.length) createCropHandles();
   cropRectEl.style.display = 'block';
@@ -1696,6 +1709,8 @@ function doCrop(e) {
 
   const r = { ...dragState.rect };
   const minSize = 20;
+  const w = mainCanvas.width;
+  const h = mainCanvas.height;
 
   if (dragState.type === 'corner') {
     switch (dragState.key) {
@@ -1729,9 +1744,13 @@ function doCrop(e) {
     }
   }
 
+  // Enforce minimum size
   r.w = Math.max(minSize, r.w);
   r.h = Math.max(minSize, r.h);
+  
+  // Enforce image boundaries
   clampRect(r);
+  
   cropRect = r;
   updateCropUI();
 }
