@@ -1832,7 +1832,7 @@ function addPage() {
   showToast('Page added!');
 }
 
-function createThumbnail(imgData) {
+function createThumbnail(imgData, sourceCanvas) {
   const canvas = document.createElement('canvas');
   canvas.width = 38;
   canvas.height = 50;
@@ -1840,7 +1840,10 @@ function createThumbnail(imgData) {
   const scale = Math.min(38 / imgData.width, 50 / imgData.height);
   const sw = imgData.width * scale;
   const sh = imgData.height * scale;
-  ctx.drawImage(mainCanvas, 0, 0, imgData.width, imgData.height, (38 - sw) / 2, (50 - sh) / 2, sw, sh);
+  
+  // Use provided canvas or default to mainCanvas
+  const source = sourceCanvas || mainCanvas;
+  ctx.drawImage(source, 0, 0, imgData.width, imgData.height, (38 - sw) / 2, (50 - sh) / 2, sw, sh);
   return canvas.toDataURL();
 }
 
@@ -2385,12 +2388,17 @@ function addMobilePageFromScan() {
   if (!mobileCurrentImageData) return;
   
   const canvas = document.getElementById('mobileCanvas');
+  if (!canvas) {
+    showToast('Error: Canvas not found');
+    return;
+  }
+  
   const dataURL = canvas.toDataURL('image/png');
   const page = {
     dataURL: dataURL,
     width: mobileCurrentImageData.width,
     height: mobileCurrentImageData.height,
-    thumb: createThumbnail(mobileCurrentImageData)
+    thumb: createThumbnail(mobileCurrentImageData, canvas)
   };
   
   mobilePages.push(page);
@@ -2430,12 +2438,16 @@ function updateMobileExportPreview() {
 function addMobilePage() {
   if (!mobileCurrentImageData) return;
   const canvas = document.getElementById('mobileExportCanvas');
+  if (!canvas) {
+    showToast('Error: Canvas not found');
+    return;
+  }
   const dataURL = canvas.toDataURL('image/png');
   const page = {
     dataURL: dataURL,
     width: mobileCurrentImageData.width,
     height: mobileCurrentImageData.height,
-    thumb: createThumbnail(mobileCurrentImageData)
+    thumb: createThumbnail(mobileCurrentImageData, canvas)
   };
   mobilePages.push(page);
   mobileSelectedPage = mobilePages.length - 1;
