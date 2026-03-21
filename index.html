@@ -454,6 +454,15 @@
       grid-template-columns: 1fr; 
       height: 100%;
     }
+    
+    header {
+      padding: 12px 16px;
+    }
+    
+    .header-steps {
+      display: none;
+    }
+    
     .main-area {
       display: none;
     }
@@ -852,6 +861,26 @@
           Upload
         </button>
       </div>
+
+      <button class="btn btn-primary" id="mobileAddPageBtn" onclick="addMobilePageFromScan()" style="width:100%; margin-top:10px; gap:8px; display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        Add This Page (<span id="mobilePageCount">0</span>)
+      </button>
+
+      <button class="btn btn-secondary" id="mobileNewScanBtn" onclick="newMobileScan()" style="width:100%; margin-top:10px; gap:8px; display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+        </svg>
+        New Scan
+      </button>
+    </div>
+          Upload
+        </button>
+      </div>
     </div>
 
     <!-- SECTION 2: EDIT/EFFECTS & ADJUSTMENTS -->
@@ -904,6 +933,27 @@
             <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
           </svg>
           Rotate R
+        </button>
+        <button class="btn btn-secondary" onclick="enableMobileCrop()" id="mobileCropBtn" style="flex:1; min-width:90px; gap:6px; font-size:0.75rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M6.13 1L6 16a2 2 0 002 2h15"/><path d="M1 6.13L16 6a2 2 0 012 2v15"/>
+          </svg>
+          Crop
+        </button>
+      </div>
+
+      <div id="mobileCropTools" style="display:none; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="applyMobileCrop()" style="flex:1; gap:6px; font-size:0.75rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Apply Crop
+        </button>
+        <button class="btn btn-ghost" onclick="cancelMobileCrop()" style="flex:1; gap:6px; font-size:0.75rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+          Cancel
         </button>
       </div>
     </div>
@@ -2147,6 +2197,10 @@ function displayMobileImage(imgData) {
   if (videoWrap) videoWrap.style.display = 'none';
   if (canvasWrap) canvasWrap.style.display = 'flex';
   
+  // Show add page buttons
+  document.getElementById('mobileAddPageBtn').style.display = 'flex';
+  document.getElementById('mobileNewScanBtn').style.display = 'flex';
+  
   updateMobileScanPreview();
 }
 
@@ -2266,6 +2320,96 @@ function rotateMobileImage(deg) {
   showToast('Rotated!');
 }
 
+// ── MOBILE CROP ──
+let mobileCropActive = false;
+let mobileCropRect = { x: 0, y: 0, w: 0, h: 0 };
+
+function enableMobileCrop() {
+  if (!mobileOriginalImageData) return;
+  mobileCropActive = true;
+  
+  // Setup default crop area (80% of image)
+  const w = mobileOriginalImageData.width;
+  const h = mobileOriginalImageData.height;
+  const cropW = w * 0.8;
+  const cropH = h * 0.8;
+  mobileCropRect = {
+    x: (w - cropW) / 2,
+    y: (h - cropH) / 2,
+    w: cropW,
+    h: cropH
+  };
+  
+  document.getElementById('mobileCropBtn').style.display = 'none';
+  document.getElementById('mobileCropTools').style.display = 'flex';
+  showToast('Select crop area');
+}
+
+function cancelMobileCrop() {
+  mobileCropActive = false;
+  mobileCropRect = { x: 0, y: 0, w: 0, h: 0 };
+  document.getElementById('mobileCropBtn').style.display = 'flex';
+  document.getElementById('mobileCropTools').style.display = 'none';
+  updateMobileEditPreview();
+}
+
+function applyMobileCrop() {
+  if (!mobileOriginalImageData || mobileCropRect.w <= 0 || mobileCropRect.h <= 0) {
+    showToast('Invalid crop area');
+    return;
+  }
+  
+  const sx = Math.round(mobileCropRect.x);
+  const sy = Math.round(mobileCropRect.y);
+  const sw = Math.round(mobileCropRect.w);
+  const sh = Math.round(mobileCropRect.h);
+  
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = sw;
+  tempCanvas.height = sh;
+  const tempCtx = tempCanvas.getContext('2d');
+  
+  const srcCanvas = document.getElementById('mobileEditCanvas');
+  tempCtx.drawImage(srcCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+  
+  mobileOriginalImageData = tempCtx.getImageData(0, 0, sw, sh);
+  mobileCurrentImageData = new ImageData(new Uint8ClampedArray(mobileOriginalImageData.data), mobileOriginalImageData.width, mobileOriginalImageData.height);
+  
+  cancelMobileCrop();
+  updateMobileEditPreview();
+  showToast('Cropped!');
+}
+
+// ── MOBILE ADD PAGE (FROM SCAN SECTION) ──
+function addMobilePageFromScan() {
+  if (!mobileCurrentImageData) return;
+  
+  const canvas = document.getElementById('mobileCanvas');
+  const dataURL = canvas.toDataURL('image/png');
+  const page = {
+    dataURL: dataURL,
+    width: mobileCurrentImageData.width,
+    height: mobileCurrentImageData.height,
+    thumb: createThumbnail(mobileCurrentImageData)
+  };
+  
+  mobilePages.push(page);
+  mobileSelectedPage = mobilePages.length - 1;
+  
+  // Update page count display
+  document.getElementById('mobilePageCount').textContent = mobilePages.length;
+  
+  showToast(`Page added! Total: ${mobilePages.length}`);
+  
+  // Reset for next scan
+  mobileOriginalImageData = null;
+  mobileCurrentImageData = null;
+  document.getElementById('mobilePlaceholder').style.display = 'flex';
+  document.getElementById('mobileCanvasWrap').style.display = 'none';
+  document.getElementById('mobileAddPageBtn').style.display = 'none';
+  document.getElementById('mobileNewScanBtn').style.display = 'none';
+}
+
 // ── MOBILE SECTION 3: EXPORT ──
 function updateMobileExportPreview() {
   if (!mobileCurrentImageData) return;
@@ -2296,8 +2440,9 @@ function addMobilePage() {
   mobilePages.push(page);
   mobileSelectedPage = mobilePages.length - 1;
   updateMobilePagesList();
+  document.getElementById('mobilePageCount').textContent = mobilePages.length;
   showMobileSection(0);
-  showToast('Page added!');
+  showToast(`Page added! Total: ${mobilePages.length}`);
 }
 
 function updateMobilePagesList() {
@@ -2428,6 +2573,8 @@ function newMobileScan() {
   document.getElementById('mobilePlaceholder').style.display = 'flex';
   document.getElementById('mobileVideoWrap').style.display = 'none';
   document.getElementById('mobileCanvasWrap').style.display = 'none';
+  document.getElementById('mobileAddPageBtn').style.display = 'none';
+  document.getElementById('mobileNewScanBtn').style.display = 'none';
   showMobileSection(0);
   showToast('Scan cleared!');
 }
