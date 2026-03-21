@@ -983,7 +983,7 @@
 </div>
 
 <!-- Hidden file input -->
-<input type="file" id="fileInput" accept="image/*" onchange="loadFile(event)">
+<input type="file" id="fileInput" accept="image/*">
 
 <!-- Toast -->
 <div id="toast"></div>
@@ -1175,20 +1175,54 @@ function capturePhoto() {
   showToast('Photo captured!');
 }
 
-// ── FILE UPLOAD ──
+// ── FILE UPLOAD (UNIFIED FOR DESKTOP & MOBILE) ──
 function loadFile(e) {
   const file = e.target.files[0];
-  if (!file) return;
+  if (!file) {
+    showToast('No file selected');
+    return;
+  }
+  
   const reader = new FileReader();
+  reader.onerror = () => {
+    showToast('Error reading file');
+  };
+  
   reader.onload = ev => {
     const img = new Image();
+    img.onerror = () => {
+      showToast('Error loading image');
+    };
+    
     img.onload = () => {
-      hiddenCanvas.width = img.width; hiddenCanvas.height = img.height;
-      hctx.drawImage(img, 0, 0);
-      originalImageData = hctx.getImageData(0, 0, img.width, img.height);
-      showImage(originalImageData);
-      setStep(2);
-      showToast('Image loaded!');
+      try {
+        // Check if on mobile or desktop
+        const isMobile = window.innerWidth <= 700;
+        
+        if (isMobile) {
+          // Mobile version
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = img.width;
+          tempCanvas.height = img.height;
+          const tempCtx = tempCanvas.getContext('2d');
+          tempCtx.drawImage(img, 0, 0);
+          mobileOriginalImageData = tempCtx.getImageData(0, 0, img.width, img.height);
+          displayMobileImage(mobileOriginalImageData);
+          showMobileSection(0);
+        } else {
+          // Desktop version
+          hiddenCanvas.width = img.width;
+          hiddenCanvas.height = img.height;
+          hctx.drawImage(img, 0, 0);
+          originalImageData = hctx.getImageData(0, 0, img.width, img.height);
+          showImage(originalImageData);
+          setStep(2);
+        }
+        showToast('Image loaded!');
+      } catch (err) {
+        console.error('Error processing image:', err);
+        showToast('Error processing image');
+      }
     };
     img.src = ev.target.result;
   };
@@ -2101,51 +2135,49 @@ function captureMobilePhoto() {
 }
 
 function displayMobileImage(imgData) {
+  // Create a copy so we can apply effects
   mobileCurrentImageData = new ImageData(new Uint8ClampedArray(imgData.data), imgData.width, imgData.height);
-  document.getElementById('mobilePlaceholder').style.display = 'none';
-  document.getElementById('mobileVideoWrap').style.display = 'none';
-  document.getElementById('mobileCanvasWrap').style.display = 'flex';
+  
+  // Hide placeholder and video
+  const placeholder = document.getElementById('mobilePlaceholder');
+  const videoWrap = document.getElementById('mobileVideoWrap');
+  const canvasWrap = document.getElementById('mobileCanvasWrap');
+  
+  if (placeholder) placeholder.style.display = 'none';
+  if (videoWrap) videoWrap.style.display = 'none';
+  if (canvasWrap) canvasWrap.style.display = 'flex';
+  
   updateMobileScanPreview();
 }
 
 function updateMobileScanPreview() {
   if (!mobileCurrentImageData) return;
+  
   const canvas = document.getElementById('mobileCanvas');
-  const zoneEl = document.getElementById('mobileScanZone');
-  const maxW = zoneEl.clientWidth - 16;
-  const maxH = 280;
-  const scale = Math.min(maxW / mobileCurrentImageData.width, maxH / mobileCurrentImageData.height, 1);
-  canvas.width = mobileCurrentImageData.width;
-  canvas.height = mobileCurrentImageData.height;
-  canvas.style.maxWidth = (mobileCurrentImageData.width * scale) + 'px';
-  canvas.style.maxHeight = (mobileCurrentImageData.height * scale) + 'px';
-  const ctx = canvas.getContext('2d');
-  ctx.putImageData(mobileCurrentImageData, 0, 0);
+  if (!canvas) return;
+  
+  try {
+    const zoneEl = document.getElementById('mobileScanZone');
+    const maxW = zoneEl ? (zoneEl.clientWidth - 16) : 300;
+    const maxH = 280;
+    const scale = Math.min(maxW / mobileCurrentImageData.width, maxH / mobileCurrentImageData.height, 1);
+    
+    canvas.width = mobileCurrentImageData.width;
+    canvas.height = mobileCurrentImageData.height;
+    canvas.style.maxWidth = Math.round(mobileCurrentImageData.width * scale) + 'px';
+    canvas.style.maxHeight = Math.round(mobileCurrentImageData.height * scale) + 'px';
+    
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.putImageData(mobileCurrentImageData, 0, 0);
+    }
+  } catch (err) {
+    console.error('Error updating mobile scan preview:', err);
+  }
 }
 
-// Load file for mobile
-document.getElementById('fileInput').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      mobileOriginalImageData = ctx.getImageData(0, 0, img.width, img.height);
-      displayMobileImage(mobileOriginalImageData);
-      showMobileSection(0);
-      showToast('Image loaded!');
-    };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
-  e.target.value = '';
-});
+// File input handler (unified)
+document.getElementById('fileInput').addEventListener('change', loadFile);
 
 // ── MOBILE SECTION 2: EDIT ──
 function buildMobileEffectGrid() {
