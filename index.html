@@ -888,9 +888,9 @@
       <div class="section-title">🎨 Edit Document</div>
       <div class="section-subtitle">Apply effects and adjustments</div>
       
-      <div id="mobileEditPreview" style="border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); min-height: 250px; overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; position: relative;">
-        <canvas id="mobileEditCanvas" style="max-width: 100%; max-height: 100%;"></canvas>
-        <canvas id="mobileCropOverlay" style="position: absolute; display: none; cursor: crosshair;"></canvas>
+      <div id="mobileEditPreview" style="border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); min-height: 250px; overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; position: relative; width: 100%;">
+        <canvas id="mobileEditCanvas" style="max-width: 100%; max-height: 100%; display: block;"></canvas>
+        <canvas id="mobileCropOverlay" style="position: absolute; top: 0; left: 0; display: none; cursor: crosshair;"></canvas>
       </div>
 
       <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px; color:var(--text);">Effects</div>
@@ -2354,7 +2354,6 @@ function enableMobileCrop() {
   
   const canvas = document.getElementById('mobileEditCanvas');
   const overlay = document.getElementById('mobileCropOverlay');
-  const preview = document.getElementById('mobileEditPreview');
   
   // Setup default crop area (80% of image)
   const imgData = mobileCurrentImageData || mobileOriginalImageData;
@@ -2369,29 +2368,27 @@ function enableMobileCrop() {
     h: cropH
   };
   
-  // Setup overlay canvas
+  // Setup overlay canvas with absolute positioning matching canvas
   overlay.width = canvas.width;
   overlay.height = canvas.height;
   overlay.style.display = 'block';
-  overlay.style.top = canvas.offsetTop + 'px';
-  overlay.style.left = canvas.offsetLeft + 'px';
-  overlay.style.width = canvas.style.maxWidth || canvas.clientWidth + 'px';
-  overlay.style.height = canvas.style.maxHeight || canvas.clientHeight + 'px';
+  overlay.style.top = '0';
+  overlay.style.left = '0';
   
   // Draw initial crop overlay
   drawMobileCropOverlay();
   
-  // Add event listeners
-  overlay.addEventListener('mousedown', handleMobileCropMouseDown);
-  overlay.addEventListener('touchstart', handleMobileCropTouchStart);
-  overlay.addEventListener('mousemove', handleMobileCropMouseMove);
-  overlay.addEventListener('touchmove', handleMobileCropTouchMove);
-  overlay.addEventListener('mouseup', handleMobileCropMouseUp);
-  overlay.addEventListener('touchend', handleMobileCropTouchEnd);
+  // Add event listeners to document for better tracking
+  document.addEventListener('mousemove', handleMobileCropMouseMove, true);
+  document.addEventListener('mouseup', handleMobileCropMouseUp, true);
+  document.addEventListener('touchmove', handleMobileCropTouchMove, true);
+  document.addEventListener('touchend', handleMobileCropTouchEnd, true);
+  overlay.addEventListener('mousedown', handleMobileCropMouseDown, true);
+  overlay.addEventListener('touchstart', handleMobileCropTouchStart, true);
   
   document.getElementById('mobileCropBtn').style.display = 'none';
   document.getElementById('mobileCropTools').style.display = 'flex';
-  showToast('Drag to select crop area');
+  showToast('Drag corners to crop');
 }
 
 function drawMobileCropOverlay() {
@@ -2401,15 +2398,17 @@ function drawMobileCropOverlay() {
   
   const ctx = overlay.getContext('2d');
   const imgData = mobileCurrentImageData || mobileOriginalImageData;
+  if (!imgData) return;
   
-  // Calculate scale factor between canvas display and actual image data
-  const displayWidth = canvas.clientWidth;
-  const displayHeight = canvas.clientHeight;
+  // Use actual canvas dimensions (already set to match image in updateMobileEditPreview)
+  const displayWidth = canvas.width;
+  const displayHeight = canvas.height;
   const scaleX = displayWidth / imgData.width;
   const scaleY = displayHeight / imgData.height;
   
   // Clear overlay
-  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+  ctx.clearRect(0, 0, displayWidth, displayHeight);
   
   // Draw semi-transparent overlay outside crop area
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
@@ -2425,30 +2424,36 @@ function drawMobileCropOverlay() {
   ctx.fillRect(cropX + cropW, cropY, displayWidth - cropX - cropW, cropH);
   
   // Draw crop rectangle border
-  ctx.strokeStyle = 'var(--accent)';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#e8ff47';
+  ctx.lineWidth = 3;
   ctx.strokeRect(cropX, cropY, cropW, cropH);
   
   // Draw resize handles
-  const handleSize = 12;
-  ctx.fillStyle = 'var(--accent)';
+  const handleSize = 20;
+  ctx.fillStyle = '#e8ff47';
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 4;
+  
   const handles = [
-    { x: cropX - handleSize/2, y: cropY - handleSize/2 }, // top-left
-    { x: cropX + cropW - handleSize/2, y: cropY - handleSize/2 }, // top-right
-    { x: cropX - handleSize/2, y: cropY + cropH - handleSize/2 }, // bottom-left
-    { x: cropX + cropW - handleSize/2, y: cropY + cropH - handleSize/2 } // bottom-right
+    { x: cropX - handleSize/2, y: cropY - handleSize/2 },
+    { x: cropX + cropW - handleSize/2, y: cropY - handleSize/2 },
+    { x: cropX - handleSize/2, y: cropY + cropH - handleSize/2 },
+    { x: cropX + cropW - handleSize/2, y: cropY + cropH - handleSize/2 }
   ];
   handles.forEach(h => {
     ctx.fillRect(h.x, h.y, handleSize, handleSize);
   });
+  
+  ctx.shadowColor = 'rgba(0,0,0,0)';
 }
 
-function getCropHandleAtPoint(x, y) {
+function getCropHandleAtPoint(px, py) {
   const canvas = document.getElementById('mobileEditCanvas');
   const imgData = mobileCurrentImageData || mobileOriginalImageData;
+  if (!imgData) return null;
   
-  const displayWidth = canvas.clientWidth;
-  const displayHeight = canvas.clientHeight;
+  const displayWidth = canvas.width;
+  const displayHeight = canvas.height;
   const scaleX = displayWidth / imgData.width;
   const scaleY = displayHeight / imgData.height;
   
@@ -2456,17 +2461,22 @@ function getCropHandleAtPoint(x, y) {
   const cropY = mobileCropRect.y * scaleY;
   const cropW = mobileCropRect.w * scaleX;
   const cropH = mobileCropRect.h * scaleY;
-  const threshold = 20;
+  const threshold = 30;
   
-  if (Math.abs(x - cropX) < threshold && Math.abs(y - cropY) < threshold) return 'tl';
-  if (Math.abs(x - (cropX + cropW)) < threshold && Math.abs(y - cropY) < threshold) return 'tr';
-  if (Math.abs(x - cropX) < threshold && Math.abs(y - (cropY + cropH)) < threshold) return 'bl';
-  if (Math.abs(x - (cropX + cropW)) < threshold && Math.abs(y - (cropY + cropH)) < threshold) return 'br';
-  if (x > cropX && x < cropX + cropW && y > cropY && y < cropY + cropH) return 'move';
+  // Check corners first
+  if (Math.abs(px - cropX) < threshold && Math.abs(py - cropY) < threshold) return 'tl';
+  if (Math.abs(px - (cropX + cropW)) < threshold && Math.abs(py - cropY) < threshold) return 'tr';
+  if (Math.abs(px - cropX) < threshold && Math.abs(py - (cropY + cropH)) < threshold) return 'bl';
+  if (Math.abs(px - (cropX + cropW)) < threshold && Math.abs(py - (cropY + cropH)) < threshold) return 'br';
+  
+  // Check if inside crop area
+  if (px > cropX && px < cropX + cropW && py > cropY && py < cropY + cropH) return 'move';
+  
   return null;
 }
 
 function handleMobileCropMouseDown(e) {
+  if (!mobileCropActive) return;
   const overlay = document.getElementById('mobileCropOverlay');
   const rect = overlay.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -2474,6 +2484,7 @@ function handleMobileCropMouseDown(e) {
   
   mobileCropDragHandle = getCropHandleAtPoint(x, y);
   if (mobileCropDragHandle) {
+    e.preventDefault();
     mobileCropDragging = true;
     mobileCropStartX = x;
     mobileCropStartY = y;
@@ -2481,6 +2492,7 @@ function handleMobileCropMouseDown(e) {
 }
 
 function handleMobileCropTouchStart(e) {
+  if (!mobileCropActive) return;
   const overlay = document.getElementById('mobileCropOverlay');
   const rect = overlay.getBoundingClientRect();
   const touch = e.touches[0];
@@ -2489,6 +2501,7 @@ function handleMobileCropTouchStart(e) {
   
   mobileCropDragHandle = getCropHandleAtPoint(x, y);
   if (mobileCropDragHandle) {
+    e.preventDefault();
     mobileCropDragging = true;
     mobileCropStartX = x;
     mobileCropStartY = y;
@@ -2496,29 +2509,30 @@ function handleMobileCropTouchStart(e) {
 }
 
 function handleMobileCropMouseMove(e) {
-  if (!mobileCropDragging) return;
-  updateCropRect(e.clientX, e.clientY);
+  if (!mobileCropActive || !mobileCropDragging) return;
+  const overlay = document.getElementById('mobileCropOverlay');
+  const rect = overlay.getBoundingClientRect();
+  updateCropRect(e.clientX - rect.left, e.clientY - rect.top);
 }
 
 function handleMobileCropTouchMove(e) {
-  if (!mobileCropDragging) return;
-  const touch = e.touches[0];
-  updateCropRect(touch.clientX, touch.clientY);
-}
-
-function updateCropRect(clientX, clientY) {
+  if (!mobileCropActive || !mobileCropDragging) return;
+  e.preventDefault();
   const overlay = document.getElementById('mobileCropOverlay');
   const rect = overlay.getBoundingClientRect();
+  const touch = e.touches[0];
+  updateCropRect(touch.clientX - rect.left, touch.clientY - rect.top);
+}
+
+function updateCropRect(x, y) {
   const canvas = document.getElementById('mobileEditCanvas');
   const imgData = mobileCurrentImageData || mobileOriginalImageData;
   
-  const x = clientX - rect.left;
-  const y = clientY - rect.top;
   const deltaX = x - mobileCropStartX;
   const deltaY = y - mobileCropStartY;
   
-  const displayWidth = canvas.clientWidth;
-  const displayHeight = canvas.clientHeight;
+  const displayWidth = canvas.width;
+  const displayHeight = canvas.height;
   const scaleX = imgData.width / displayWidth;
   const scaleY = imgData.height / displayHeight;
   
@@ -2572,12 +2586,10 @@ function updateCropRect(clientX, clientY) {
 
 function handleMobileCropMouseUp() {
   mobileCropDragging = false;
-  mobileCropDragHandle = null;
 }
 
 function handleMobileCropTouchEnd() {
   mobileCropDragging = false;
-  mobileCropDragHandle = null;
 }
 
 function cancelMobileCrop() {
@@ -2585,14 +2597,15 @@ function cancelMobileCrop() {
   mobileCropActive = false;
   mobileCropRect = { x: 0, y: 0, w: 0, h: 0 };
   mobileCropDragging = false;
+  mobileCropDragHandle = null;
   
   // Remove event listeners
-  overlay.removeEventListener('mousedown', handleMobileCropMouseDown);
-  overlay.removeEventListener('touchstart', handleMobileCropTouchStart);
-  overlay.removeEventListener('mousemove', handleMobileCropMouseMove);
-  overlay.removeEventListener('touchmove', handleMobileCropTouchMove);
-  overlay.removeEventListener('mouseup', handleMobileCropMouseUp);
-  overlay.removeEventListener('touchend', handleMobileCropTouchEnd);
+  document.removeEventListener('mousemove', handleMobileCropMouseMove, true);
+  document.removeEventListener('mouseup', handleMobileCropMouseUp, true);
+  document.removeEventListener('touchmove', handleMobileCropTouchMove, true);
+  document.removeEventListener('touchend', handleMobileCropTouchEnd, true);
+  overlay.removeEventListener('mousedown', handleMobileCropMouseDown, true);
+  overlay.removeEventListener('touchstart', handleMobileCropTouchStart, true);
   overlay.style.display = 'none';
   
   document.getElementById('mobileCropBtn').style.display = 'flex';
@@ -2611,16 +2624,23 @@ function applyMobileCrop() {
   const sw = Math.round(mobileCropRect.w);
   const sh = Math.round(mobileCropRect.h);
   
+  // Create new canvas and crop from the canvas display (which may have effects applied)
+  const srcCanvas = document.getElementById('mobileEditCanvas');
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = sw;
   tempCanvas.height = sh;
   const tempCtx = tempCanvas.getContext('2d');
-  
-  const srcCanvas = document.getElementById('mobileEditCanvas');
   tempCtx.drawImage(srcCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
   
+  // Update both image data objects
   mobileOriginalImageData = tempCtx.getImageData(0, 0, sw, sh);
   mobileCurrentImageData = new ImageData(new Uint8ClampedArray(mobileOriginalImageData.data), mobileOriginalImageData.width, mobileOriginalImageData.height);
+  
+  // Reset adjustments since we're working with new cropped image
+  document.getElementById('mobileBrightness').value = 0;
+  document.getElementById('mobileContrast').value = 0;
+  document.getElementById('mobileSharpness').value = 0;
+  document.getElementById('mobileSaturation').value = 0;
   
   cancelMobileCrop();
   updateMobileEditPreview();
