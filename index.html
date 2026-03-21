@@ -351,11 +351,182 @@
   .no-doc svg { width: 40px; height: 40px; opacity: 0.3; }
   .no-doc p { font-size: 0.82rem; }
 
+  /* ── MOBILE SECTIONS ── */
+  .mobile-section {
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+    flex: 1;
+  }
+  .mobile-section.active { display: flex; }
+  
+  .section-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+
+  .section-subtitle {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+
+  #mobileContainer {
+    display: none;
+    flex-direction: column;
+    height: calc(100vh - 65px);
+  }
+
+  .mobile-content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .section-nav {
+    display: none;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    position: sticky;
+    bottom: 0;
+    z-index: 50;
+  }
+  .section-nav.mobile { display: flex; }
+  
+  .section-nav button {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .section-nav button:hover { border-color: var(--accent2); color: var(--text); }
+  .section-nav button.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+
+  .grid-cols-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .mobile-preview-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  .mobile-preview-box.has-image {
+    padding: 0;
+    color: var(--text);
+  }
+
+  .mobile-preview-box canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+  }
+
   @media (max-width: 700px) {
-    .app { grid-template-columns: 1fr; }
+    .app { 
+      grid-template-columns: 1fr; 
+      height: 100%;
+    }
+    .main-area {
+      display: none;
+    }
     .sidebar { display: none; }
-    header { padding: 14px 16px; }
-    .header-steps { display: none; }
+    
+    #mobileContainer {
+      display: flex;
+    }
+
+    .mobile-section {
+      display: none;
+    }
+    .mobile-section.active {
+      display: flex;
+    }
+    
+    .section-nav.mobile { display: flex; }
+    
+    #scanZone {
+      min-height: 280px;
+      flex: 0 0 auto;
+      margin-bottom: 12px;
+    }
+
+    .mobile-effects-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .effect-btn {
+      padding: 10px 8px;
+      font-size: 0.7rem;
+    }
+
+    .mobile-sliders {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .slider-row {
+      gap: 8px;
+    }
+
+    .slider-row label {
+      font-size: 0.78rem;
+    }
+
+    .export-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .export-btn {
+      padding: 12px 10px;
+      font-size: 0.72rem;
+    }
+
+    .pages-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .page-thumb {
+      flex-direction: column;
+      padding: 8px;
+    }
   }
 
   /* Mobile touch optimizations */
@@ -627,6 +798,187 @@
         </button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- MOBILE SECTIONS CONTAINER -->
+<div id="mobileContainer">
+  <div class="mobile-content">
+    <!-- SECTION 1: SCAN/UPLOAD -->
+    <div class="mobile-section active" id="scanSection">
+      <div class="section-title">📱 Scan Document</div>
+      <div class="section-subtitle">Capture or upload your document</div>
+      
+      <div id="mobileScanZone" style="position:relative; border: 2px dashed var(--border); border-radius:12px; background:var(--surface); min-height:280px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:20px;">
+        <div id="mobilePlaceholder" class="scan-placeholder">
+          <div class="icon-ring">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+          <h3>Scan Document</h3>
+          <p>Use your camera or upload an image</p>
+        </div>
+        <div id="mobileVideoWrap" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:#000; border-radius:12px;">
+          <video id="mobileVideoEl" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; border-radius:12px;"></video>
+          <div style="position:absolute; bottom:16px; left:0; right:0; display:flex; gap:10px; justify-content:center; padding:0 16px;">
+            <button class="btn btn-primary" onclick="captureMobilePhoto()" style="flex:1;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/>
+              </svg>
+              Capture
+            </button>
+            <button class="btn btn-ghost" onclick="stopMobileCamera()" style="flex:1;">Cancel</button>
+          </div>
+        </div>
+        <div id="mobileCanvasWrap" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0;">
+          <canvas id="mobileCanvas" style="max-width:100%; max-height:100%; border-radius:12px;"></canvas>
+        </div>
+      </div>
+
+      <div class="grid-cols-2" style="margin-top:12px;">
+        <button class="btn btn-primary" onclick="startMobileCamera()" style="gap:8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          Camera
+        </button>
+        <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()" style="gap:8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+          </svg>
+          Upload
+        </button>
+      </div>
+    </div>
+
+    <!-- SECTION 2: EDIT/EFFECTS & ADJUSTMENTS -->
+    <div class="mobile-section" id="editSection">
+      <div class="section-title">🎨 Edit Document</div>
+      <div class="section-subtitle">Apply effects and adjustments</div>
+      
+      <div id="mobileEditPreview" style="border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); min-height: 250px; overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+        <canvas id="mobileEditCanvas" style="max-width: 100%; max-height: 100%;"></canvas>
+      </div>
+
+      <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px; color:var(--text);">Effects</div>
+      <div class="mobile-effects-grid" id="mobileEffectsGrid">
+        <!-- populated by JS -->
+      </div>
+
+      <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px; color:var(--text); margin-top:12px;">Adjustments</div>
+      <div class="mobile-sliders">
+        <div class="slider-row">
+          <label>Brightness</label>
+          <input type="range" id="mobileBrightness" min="-100" max="100" value="0" oninput="applyMobileAdjustments()" style="flex:1;">
+          <span class="slider-val" id="mobileBrightnessVal">0</span>
+        </div>
+        <div class="slider-row">
+          <label>Contrast</label>
+          <input type="range" id="mobileContrast" min="-100" max="100" value="0" oninput="applyMobileAdjustments()" style="flex:1;">
+          <span class="slider-val" id="mobileContrastVal">0</span>
+        </div>
+        <div class="slider-row">
+          <label>Sharpness</label>
+          <input type="range" id="mobileSharpness" min="0" max="10" value="0" oninput="applyMobileAdjustments()" style="flex:1;">
+          <span class="slider-val" id="mobileSharpnessVal">0</span>
+        </div>
+        <div class="slider-row">
+          <label>Saturation</label>
+          <input type="range" id="mobileSaturation" min="-100" max="100" value="0" oninput="applyMobileAdjustments()" style="flex:1;">
+          <span class="slider-val" id="mobileSaturationVal">0</span>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="rotateMobileImage(-90)" style="flex:1; min-width:90px; gap:6px; font-size:0.75rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+          </svg>
+          Rotate L
+        </button>
+        <button class="btn btn-secondary" onclick="rotateMobileImage(90)" style="flex:1; min-width:90px; gap:6px; font-size:0.75rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+          </svg>
+          Rotate R
+        </button>
+      </div>
+    </div>
+
+    <!-- SECTION 3: EXPORT -->
+    <div class="mobile-section" id="exportSection">
+      <div class="section-title">💾 Export Document</div>
+      <div class="section-subtitle">Download your scanned document in your preferred format</div>
+      
+      <div id="mobileExportPreview" style="border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); min-height: 200px; overflow: auto; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; padding: 12px;">
+        <canvas id="mobileExportCanvas" style="max-width: 100%; max-height: 100%;"></canvas>
+      </div>
+
+      <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px; color:var(--text);">Export Format</div>
+      <div class="export-grid">
+        <button class="export-btn" onclick="downloadMobilePNG()" style="font-size:0.75rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          PNG
+        </button>
+        <button class="export-btn" onclick="downloadMobileJPEG()" style="font-size:0.75rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          JPEG
+        </button>
+        <button class="export-btn" onclick="downloadMobilePDF()" style="font-size:0.75rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/>
+          </svg>
+          PDF
+        </button>
+        <button class="export-btn" onclick="shareMobileDoc()" style="font-size:0.75rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Share
+        </button>
+      </div>
+
+      <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px; color:var(--text); margin-top:12px;">Pages</div>
+      <div class="pages-list" id="mobilePagesList">
+        <div class="no-doc" style="grid-column: 1/-1;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <p>No pages yet</p>
+        </div>
+      </div>
+
+      <div class="grid-cols-2" style="margin-top:12px;">
+        <button class="btn btn-secondary" onclick="addMobilePage()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+          Add Page
+        </button>
+        <button class="btn btn-ghost" onclick="newMobileScan()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+          </svg>
+          New Scan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAVIGATION -->
+  <div class="section-nav mobile" id="mobileNav">
+    <button class="active" onclick="showMobileSection(0)">📱 Scan</button>
+    <button onclick="showMobileSection(1)">🎨 Edit</button>
+    <button onclick="showMobileSection(2)">💾 Export</button>
   </div>
 </div>
 
@@ -1673,10 +2025,387 @@ function promptInstall() {
   });
 }
 
+// ── MOBILE FUNCTIONS ──
+
+// Mobile state
+let mobileStream = null;
+let mobileOriginalImageData = null;
+let mobileCurrentImageData = null;
+let mobilePages = [];
+let mobileSelectedPage = -1;
+let mobileCurrentEffect = 'original';
+let mobileAdjustments = { brightness: 0, contrast: 0, sharpness: 0, saturation: 0 };
+
+function showMobileSection(index) {
+  const sections = document.querySelectorAll('.mobile-section');
+  const buttons = document.querySelectorAll('.section-nav.mobile button');
+  
+  sections.forEach((s, i) => {
+    s.classList.toggle('active', i === index);
+  });
+  
+  buttons.forEach((b, i) => {
+    b.classList.toggle('active', i === index);
+  });
+
+  if (index === 0) {
+    updateMobileScanPreview();
+  } else if (index === 1) {
+    updateMobileEditPreview();
+  } else if (index === 2) {
+    updateMobileExportPreview();
+  }
+}
+
+// ── MOBILE SECTION 1: SCAN ──
+async function startMobileCamera() {
+  try {
+    mobileStream = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'environment', 
+        width: { ideal: 1280 }, 
+        height: { ideal: 720 } 
+      } 
+    });
+    const videoEl = document.getElementById('mobileVideoEl');
+    videoEl.srcObject = mobileStream;
+    document.getElementById('mobilePlaceholder').style.display = 'none';
+    document.getElementById('mobileVideoWrap').style.display = 'flex';
+    document.getElementById('mobileCanvasWrap').style.display = 'none';
+  } catch(e) {
+    showToast('Camera access denied');
+  }
+}
+
+function stopMobileCamera() {
+  if (mobileStream) {
+    mobileStream.getTracks().forEach(t => t.stop());
+    mobileStream = null;
+  }
+  document.getElementById('mobileVideoWrap').style.display = 'none';
+  document.getElementById('mobilePlaceholder').style.display = 'flex';
+}
+
+function captureMobilePhoto() {
+  const videoEl = document.getElementById('mobileVideoEl');
+  const w = videoEl.videoWidth || 640;
+  const h = videoEl.videoHeight || 480;
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = w;
+  tempCanvas.height = h;
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.drawImage(videoEl, 0, 0, w, h);
+  mobileOriginalImageData = tempCtx.getImageData(0, 0, w, h);
+  stopMobileCamera();
+  displayMobileImage(mobileOriginalImageData);
+  showToast('Photo captured!');
+}
+
+function displayMobileImage(imgData) {
+  mobileCurrentImageData = new ImageData(new Uint8ClampedArray(imgData.data), imgData.width, imgData.height);
+  document.getElementById('mobilePlaceholder').style.display = 'none';
+  document.getElementById('mobileVideoWrap').style.display = 'none';
+  document.getElementById('mobileCanvasWrap').style.display = 'flex';
+  updateMobileScanPreview();
+}
+
+function updateMobileScanPreview() {
+  if (!mobileCurrentImageData) return;
+  const canvas = document.getElementById('mobileCanvas');
+  const zoneEl = document.getElementById('mobileScanZone');
+  const maxW = zoneEl.clientWidth - 16;
+  const maxH = 280;
+  const scale = Math.min(maxW / mobileCurrentImageData.width, maxH / mobileCurrentImageData.height, 1);
+  canvas.width = mobileCurrentImageData.width;
+  canvas.height = mobileCurrentImageData.height;
+  canvas.style.maxWidth = (mobileCurrentImageData.width * scale) + 'px';
+  canvas.style.maxHeight = (mobileCurrentImageData.height * scale) + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(mobileCurrentImageData, 0, 0);
+}
+
+// Load file for mobile
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      mobileOriginalImageData = ctx.getImageData(0, 0, img.width, img.height);
+      displayMobileImage(mobileOriginalImageData);
+      showMobileSection(0);
+      showToast('Image loaded!');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+});
+
+// ── MOBILE SECTION 2: EDIT ──
+function buildMobileEffectGrid() {
+  const grid = document.getElementById('mobileEffectsGrid');
+  grid.innerHTML = '';
+  effects.forEach(e => {
+    const btn = document.createElement('button');
+    btn.className = 'effect-btn' + (e.id === 'original' ? ' active' : '');
+    btn.id = 'mobileEff_' + e.id;
+    btn.onclick = () => applyMobileEffect(e.id);
+    const label = document.createElement('span');
+    label.textContent = e.label;
+    btn.appendChild(label);
+    grid.appendChild(btn);
+  });
+}
+
+function applyMobileEffect(id) {
+  if (!mobileOriginalImageData) return;
+  mobileCurrentEffect = id;
+  document.querySelectorAll('#mobileEffectsGrid .effect-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('mobileEff_' + id);
+  if (btn) btn.classList.add('active');
+  applyMobileAdjustments();
+}
+
+function applyMobileAdjustments() {
+  if (!mobileOriginalImageData) return;
+
+  const bval = parseInt(document.getElementById('mobileBrightness').value);
+  const cval = parseInt(document.getElementById('mobileContrast').value);
+  const sval = parseInt(document.getElementById('mobileSharpness').value);
+  const satval = parseInt(document.getElementById('mobileSaturation').value);
+  
+  document.getElementById('mobileBrightnessVal').textContent = bval;
+  document.getElementById('mobileContrastVal').textContent = cval;
+  document.getElementById('mobileSharpnessVal').textContent = sval;
+  document.getElementById('mobileSaturationVal').textContent = satval;
+
+  const effFn = effects.find(e => e.id === mobileCurrentEffect)?.fn || (d => d);
+  let processed = effFn(mobileOriginalImageData);
+
+  const adj = new ImageData(new Uint8ClampedArray(processed.data), processed.width, processed.height);
+  if (bval !== 0 || cval !== 0) applyContrastBrightness(adj.data, cval, bval);
+  if (satval !== 0) applySaturation(adj.data, satval);
+  if (sval > 0) applySharpness(adj, sval);
+
+  mobileCurrentImageData = adj;
+  updateMobileEditPreview();
+}
+
+function updateMobileEditPreview() {
+  if (!mobileCurrentImageData) return;
+  const canvas = document.getElementById('mobileEditCanvas');
+  const preview = document.getElementById('mobileEditPreview');
+  const maxW = preview.clientWidth - 2;
+  const maxH = 250;
+  const scale = Math.min(maxW / mobileCurrentImageData.width, maxH / mobileCurrentImageData.height, 1);
+  canvas.width = mobileCurrentImageData.width;
+  canvas.height = mobileCurrentImageData.height;
+  canvas.style.maxWidth = (mobileCurrentImageData.width * scale) + 'px';
+  canvas.style.maxHeight = (mobileCurrentImageData.height * scale) + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(mobileCurrentImageData, 0, 0);
+}
+
+function rotateMobileImage(deg) {
+  if (!mobileCurrentImageData) return;
+  const w = mobileCurrentImageData.width;
+  const h = mobileCurrentImageData.height;
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = h;
+  tempCanvas.height = w;
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.save();
+  tempCtx.translate(h / 2, w / 2);
+  tempCtx.rotate(deg * Math.PI / 180);
+  
+  const srcCanvas = document.getElementById('mobileEditCanvas');
+  tempCtx.drawImage(srcCanvas, -w / 2, -h / 2);
+  tempCtx.restore();
+  
+  mobileOriginalImageData = tempCtx.getImageData(0, 0, h, w);
+  mobileCurrentImageData = new ImageData(new Uint8ClampedArray(mobileOriginalImageData.data), mobileOriginalImageData.width, mobileOriginalImageData.height);
+  updateMobileEditPreview();
+  showToast('Rotated!');
+}
+
+// ── MOBILE SECTION 3: EXPORT ──
+function updateMobileExportPreview() {
+  if (!mobileCurrentImageData) return;
+  const canvas = document.getElementById('mobileExportCanvas');
+  const preview = document.getElementById('mobileExportPreview');
+  const maxW = preview.clientWidth - 24;
+  const maxH = 200;
+  const scale = Math.min(maxW / mobileCurrentImageData.width, maxH / mobileCurrentImageData.height, 1);
+  canvas.width = mobileCurrentImageData.width;
+  canvas.height = mobileCurrentImageData.height;
+  canvas.style.maxWidth = (mobileCurrentImageData.width * scale) + 'px';
+  canvas.style.maxHeight = (mobileCurrentImageData.height * scale) + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.putImageData(mobileCurrentImageData, 0, 0);
+  updateMobilePagesList();
+}
+
+function addMobilePage() {
+  if (!mobileCurrentImageData) return;
+  const canvas = document.getElementById('mobileExportCanvas');
+  const dataURL = canvas.toDataURL('image/png');
+  const page = {
+    dataURL: dataURL,
+    width: mobileCurrentImageData.width,
+    height: mobileCurrentImageData.height,
+    thumb: createThumbnail(mobileCurrentImageData)
+  };
+  mobilePages.push(page);
+  mobileSelectedPage = mobilePages.length - 1;
+  updateMobilePagesList();
+  showMobileSection(0);
+  showToast('Page added!');
+}
+
+function updateMobilePagesList() {
+  const list = document.getElementById('mobilePagesList');
+  list.innerHTML = '';
+  if (mobilePages.length === 0) {
+    list.innerHTML = '<div class="no-doc" style="grid-column:1/-1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No pages yet</p></div>';
+    return;
+  }
+  mobilePages.forEach((p, i) => {
+    const item = document.createElement('div');
+    item.className = 'page-thumb' + (i === mobileSelectedPage ? ' selected' : '');
+    item.onclick = () => selectMobilePage(i);
+    const img = document.createElement('img');
+    img.src =p.thumb;
+    const del = document.createElement('div');
+    del.className = 'page-del';
+    del.innerHTML = '×';
+    del.onclick = (e) => { e.stopPropagation(); deleteMobilePage(i); };
+    item.appendChild(img);
+    item.appendChild(del);
+    list.appendChild(item);
+  });
+}
+
+function selectMobilePage(i) {
+  mobileSelectedPage = i;
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.getElementById('mobileExportCanvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    mobileCurrentImageData = ctx.getImageData(0, 0, img.width, img.height);
+    updateMobilePagesList();
+  };
+  img.src = mobilePages[i].dataURL;
+}
+
+function deleteMobilePage(i) {
+  mobilePages.splice(i, 1);
+  if (mobileSelectedPage >= mobilePages.length) mobileSelectedPage = mobilePages.length - 1;
+  if (mobilePages.length === 0) {
+    newMobileScan();
+  }
+  updateMobilePagesList();
+}
+
+function downloadMobilePNG() {
+  if (!mobileCurrentImageData) return;
+  const canvas = document.getElementById('mobileExportCanvas');
+  const link = document.createElement('a');
+  link.download = 'scan.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('PNG downloaded!');
+}
+
+function downloadMobileJPEG() {
+  if (!mobileCurrentImageData) return;
+  const canvas = document.getElementById('mobileExportCanvas');
+  const link = document.createElement('a');
+  link.download = 'scan.jpg';
+  link.href = canvas.toDataURL('image/jpeg', 0.9);
+  link.click();
+  showToast('JPEG downloaded!');
+}
+
+function downloadMobilePDF() {
+  if (mobilePages.length === 0) return;
+  
+  const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF;
+  if (!jsPDFClass) {
+    showToast('PDF library not loaded');
+    return;
+  }
+
+  const pdf = new jsPDFClass({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  mobilePages.forEach((page, index) => {
+    if (index > 0) pdf.addPage();
+    const imgData = page.dataURL;
+
+    const imgRatio = page.width / page.height;
+    let renderWidth = pageWidth;
+    let renderHeight = renderWidth / imgRatio;
+    if (renderHeight > pageHeight) {
+      renderHeight = pageHeight;
+      renderWidth = renderHeight * imgRatio;
+    }
+    const marginX = (pageWidth - renderWidth) / 2;
+    const marginY = (pageHeight - renderHeight) / 2;
+
+    pdf.addImage(imgData, 'PNG', marginX, marginY, renderWidth, renderHeight);
+  });
+  pdf.save('scan.pdf');
+  showToast('PDF downloaded!');
+}
+
+async function shareMobileDoc() {
+  if (!mobileCurrentImageData || !navigator.share) return;
+  const canvas = document.getElementById('mobileExportCanvas');
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  const file = new File([blob], 'scan.png', { type: 'image/png' });
+  try {
+    await navigator.share({ files: [file], title: 'Scanned Document' });
+    showToast('Shared!');
+  } catch (e) {
+    showToast('Share cancelled');
+  }
+}
+
+function newMobileScan() {
+  if (mobileStream) {
+    mobileStream.getTracks().forEach(track => track.stop());
+    mobileStream = null;
+  }
+  mobileOriginalImageData = null;
+  mobileCurrentImageData = null;
+  mobileCurrentEffect = 'original';
+  document.getElementById('mobileBrightness').value = 0;
+  document.getElementById('mobileContrast').value = 0;
+  document.getElementById('mobileSharpness').value = 0;
+  document.getElementById('mobileSaturation').value = 0;
+  document.getElementById('mobilePlaceholder').style.display = 'flex';
+  document.getElementById('mobileVideoWrap').style.display = 'none';
+  document.getElementById('mobileCanvasWrap').style.display = 'none';
+  showMobileSection(0);
+  showToast('Scan cleared!');
+}
+
 // ── INIT ──
 setStep(1);
 loadPagesFromStorage();
 checkPwaInstall();
+buildMobileEffectGrid();
+
 
 function checkPwaInstall() {
   // Show install instructions for iOS Safari (no beforeinstallprompt event)
