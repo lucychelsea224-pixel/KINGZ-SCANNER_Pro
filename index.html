@@ -197,21 +197,44 @@
   }
   #cropOverlay.active { display: block; }
   #cropRect {
-    position: absolute; border: 2px solid var(--accent);
-    background: rgba(232,255,71,0.08);
+    position: absolute; border: 3px solid var(--accent);
+    background: rgba(232,255,71,0.06);
     pointer-events: none;
+    box-shadow: 0 0 0 4px rgba(232,255,71,0.15);
   }
   .crop-handle {
-    position: absolute; background: #87ceeb; border-radius: 999px;
+    position: absolute; background: #87ceeb; border-radius: 4px;
     transform: translate(-50%, -50%);
     pointer-events: auto;
+    cursor: pointer;
+    transition: all 150ms ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.5);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .crop-handle:hover {
+    background: #64b5d8;
+    box-shadow: 0 2px 12px rgba(135, 206, 235, 0.6), inset 0 1px 0 rgba(255,255,255,0.7);
+    transform: translate(-50%, -50%) scale(1.15);
   }
   .crop-handle.corner {
-    width: 16px; height: 16px;
+    width: 24px; height: 24px;
   }
+  .crop-handle.corner[data-key="tl"] { cursor: nwse-resize; }
+  .crop-handle.corner[data-key="tr"] { cursor: nesw-resize; }
+  .crop-handle.corner[data-key="bl"] { cursor: nesw-resize; }
+  .crop-handle.corner[data-key="br"] { cursor: nwse-resize; }
+  
   .crop-handle.edge {
-    width: 24px; height: 12px;
-    border-radius: 4px;
+    width: 28px; height: 14px;
+    border-radius: 3px;
+  }
+  .crop-handle.edge[data-key="top"],
+  .crop-handle.edge[data-key="bottom"] { 
+    cursor: ns-resize; 
+  }
+  .crop-handle.edge[data-key="left"],
+  .crop-handle.edge[data-key="right"] { 
+    cursor: ew-resize; 
   }
 
 
@@ -1554,21 +1577,39 @@ function createCropHandles() {
   const corners = ['tl', 'tr', 'br', 'bl'];
   const edges = ['top', 'right', 'bottom', 'left'];
 
+  // Create corner handles with visual indicator
   corners.forEach(k => {
     const el = document.createElement('div');
     el.className = 'crop-handle corner';
     el.dataset.type = 'corner';
     el.dataset.key = k;
     el.style.pointerEvents = 'auto';
+    
+    // Add inner visual indicator
+    const inner = document.createElement('div');
+    inner.style.cssText = 'width: 8px; height: 8px; background: #fff; border-radius: 1px; opacity: 0.7;';
+    el.appendChild(inner);
+    
     cropHandles.appendChild(el);
   });
 
+  // Create edge handles with visual indicators
   edges.forEach(k => {
     const el = document.createElement('div');
     el.className = 'crop-handle edge';
     el.dataset.type = 'edge';
     el.dataset.key = k;
     el.style.pointerEvents = 'auto';
+    
+    // Add direction indicator
+    const indicator = document.createElement('div');
+    if (['top', 'bottom'].includes(k)) {
+      indicator.style.cssText = 'width: 4px; height: 10px; background: #fff; border-radius: 1px; opacity: 0.6;';
+    } else {
+      indicator.style.cssText = 'width: 10px; height: 4px; background: #fff; border-radius: 1px; opacity: 0.6;';
+    }
+    el.appendChild(indicator);
+    
     cropHandles.appendChild(el);
   });
 }
