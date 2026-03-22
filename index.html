@@ -979,6 +979,21 @@
           </svg>
           Apply Crop
         </button>
+        <button class="btn btn-secondary" onclick="openMobileManualCrop()" style="flex:1; gap:6px; font-size:0.75rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+          </svg>
+          Manual
+        </button>
+        <button class="btn btn-secondary" onclick="undoMobileCrop()" id="undoMobileCropBtn" style="display:none; flex:1; gap:6px; font-size:0.75rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <polyline points="9 14 4 9 9 4"/>
+            <path d="M20 20v-7a4 4 0 00-4-4H4"/>
+          </svg>
+          Undo
+        </button>
         <button class="btn btn-ghost" onclick="cancelMobileCrop()" style="flex:1; gap:6px; font-size:0.75rem;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -1106,11 +1121,11 @@
       <label>Top (Y): <input type="number" id="cropY" min="0" step="1"></label>
       <label>Width: <input type="number" id="cropW" min="1" step="1"></label>
       <label>Height: <input type="number" id="cropH" min="1" step="1"></label>
-      <button class="btn btn-secondary" onclick="setA4Crop()">Fit to A4 Aspect</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('manualCropModal').getAttribute('data-mobile') === 'true' ? setMobileA4Crop() : setA4Crop()">Fit to A4 Aspect</button>
     </div>
     <div class="modal-btns">
-      <button class="btn btn-primary" onclick="applyManualCrop()">Apply Crop</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('manualCropModal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-primary" onclick="document.getElementById('manualCropModal').getAttribute('data-mobile') === 'true' ? applyMobileManualCrop() : applyManualCrop()">Apply Crop</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('manualCropModal').classList.remove('open'); document.getElementById('manualCropModal').removeAttribute('data-mobile')">Cancel</button>
     </div>
   </div>
 </div>
@@ -2482,6 +2497,7 @@ let mobileCropDragging = false;
 let mobileCropDragHandle = null;
 let mobileCropStartX = 0;
 let mobileCropStartY = 0;
+let mobileHistory = []; // for undo like desktop
 
 function enableMobileCrop() {
   if (!mobileOriginalImageData && !mobileCurrentImageData) return;
@@ -2529,6 +2545,7 @@ function enableMobileCrop() {
   
   document.getElementById('mobileCropBtn').style.display = 'none';
   document.getElementById('mobileCropTools').style.display = 'flex';
+  document.getElementById('undoMobileCropBtn').style.display = mobileHistory.length > 0 ? 'flex' : 'none';
   showToast('Drag corners to crop');
 }
 
@@ -2751,6 +2768,7 @@ function cancelMobileCrop() {
   mobileCropRect = { x: 0, y: 0, w: 0, h: 0 };
   mobileCropDragging = false;
   mobileCropDragHandle = null;
+  mobileHistory = []; // clear history when exiting crop mode
   
   // Remove event listeners
   document.removeEventListener('mousemove', handleMobileCropMouseMove, true);
@@ -2763,6 +2781,7 @@ function cancelMobileCrop() {
   
   document.getElementById('mobileCropBtn').style.display = 'flex';
   document.getElementById('mobileCropTools').style.display = 'none';
+  document.getElementById('undoMobileCropBtn').style.display = 'none';
   updateMobileEditPreview();
 }
 
@@ -2795,9 +2814,111 @@ function applyMobileCrop() {
   document.getElementById('mobileSharpness').value = 0;
   document.getElementById('mobileSaturation').value = 0;
   
+  // Save to history for undo
+  if (mobileHistory.length > 0 || (!mobileHistory.length && mobileOriginalImageData)) {
+    const histData = new ImageData(
+      new Uint8ClampedArray(mobileCurrentImageData.data),
+      mobileCurrentImageData.width,
+      mobileCurrentImageData.height
+    );
+    mobileHistory.push(histData);
+  }
+  
   cancelMobileCrop();
   updateMobileEditPreview();
   showToast('Cropped!');
+}
+
+// ── MOBILE MANUAL CROP ──
+function openMobileManualCrop() {
+  if (!mobileOriginalImageData) return;
+  const imgW = mobileOriginalImageData.width;
+  const imgH = mobileOriginalImageData.height;
+  
+  // Get crop dimensions from mobile rect
+  const x = mobileCropRect.x > 0 ? mobileCropRect.x : 0;
+  const y = mobileCropRect.y > 0 ? mobileCropRect.y : 0;
+  const w = mobileCropRect.w > 0 ? mobileCropRect.w : imgW;
+  const h = mobileCropRect.h > 0 ? mobileCropRect.h : imgH;
+  
+  document.getElementById('cropX').value = Math.round(x);
+  document.getElementById('cropY').value = Math.round(y);
+  document.getElementById('cropW').value = Math.round(w);
+  document.getElementById('cropH').value = Math.round(h);
+  document.getElementById('manualCropModal').classList.add('open');
+  document.getElementById('manualCropModal').setAttribute('data-mobile', 'true');
+}
+
+function applyMobileManualCrop() {
+  if (!mobileOriginalImageData) return;
+
+  const x = parseInt(document.getElementById('cropX').value) || 0;
+  const y = parseInt(document.getElementById('cropY').value) || 0;
+  const w = parseInt(document.getElementById('cropW').value) || 100;
+  const h = parseInt(document.getElementById('cropH').value) || 100;
+
+  const imgW = mobileOriginalImageData.width;
+  const imgH = mobileOriginalImageData.height;
+  const clampedX = Math.max(0, Math.min(x, imgW - 1));
+  const clampedY = Math.max(0, Math.min(y, imgH - 1));
+  const clampedW = Math.max(1, Math.min(w, imgW - clampedX));
+  const clampedH = Math.max(1, Math.min(h, imgH - clampedY));
+
+  // Update mobile crop rect
+  mobileCropRect = {
+    x: clampedX,
+    y: clampedY,
+    w: clampedW,
+    h: clampedH
+  };
+  
+  mobileCropActive = true;
+  drawMobileCropOverlay();
+  document.getElementById('manualCropModal').classList.remove('open');
+  document.getElementById('manualCropModal').removeAttribute('data-mobile');
+  showToast('Manual crop set!');
+}
+
+function setMobileA4Crop() {
+  if (!mobileOriginalImageData) return;
+  const ratio = Math.sqrt(2); // A4 aspect ratio h/w
+  const imgW = mobileOriginalImageData.width;
+  const imgH = mobileOriginalImageData.height;
+  let x, y, w, h;
+  if (imgW / imgH > ratio) {
+    // Fit height, center width
+    h = imgH;
+    w = h / ratio;
+    x = (imgW - w) / 2;
+    y = 0;
+  } else {
+    // Fit width, center height
+    w = imgW;
+    h = w * ratio;
+    x = 0;
+    y = (imgH - h) / 2;
+  }
+  // Set inputs
+  document.getElementById('cropX').value = Math.round(x);
+  document.getElementById('cropY').value = Math.round(y);
+  document.getElementById('cropW').value = Math.round(w);
+  document.getElementById('cropH').value = Math.round(h);
+}
+
+function undoMobileCrop() {
+  if (mobileHistory.length === 0) return;
+  
+  const histData = mobileHistory.pop();
+  mobileCurrentImageData = new ImageData(
+    new Uint8ClampedArray(histData.data),
+    histData.width,
+    histData.height
+  );
+  
+  // Redraw with reverted image
+  updateMobileEditPreview();
+  document.getElementById('undoMobileCropBtn').style.display = mobileHistory.length > 0 ? 'flex' : 'none';
+  showToast('Crop undone!');
 }
 
 // ── MOBILE ADD PAGE (FROM SCAN SECTION) ──
