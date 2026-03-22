@@ -2505,6 +2505,12 @@ function enableMobileCrop() {
   
   const canvas = document.getElementById('mobileEditCanvas');
   const overlay = document.getElementById('mobileCropOverlay');
+  const preview = document.getElementById('mobileEditPreview');
+  
+  // Enhance container for better cropping experience
+  preview.style.minHeight = '400px';
+  preview.style.border = '2px solid #e8ff47';
+  preview.style.boxShadow = '0 0 20px rgba(232, 255, 71, 0.3)';
   
   // Setup default crop area (A4 proportions, centered)
   const imgData = mobileCurrentImageData || mobileOriginalImageData;
@@ -2527,10 +2533,10 @@ function enableMobileCrop() {
   overlay.width = canvas.width;
   overlay.height = canvas.height;
   overlay.style.display = 'block';
-  overlay.style.top = '0';
-  overlay.style.left = '0';
-  overlay.style.width = '100%';
-  overlay.style.height = 'auto';
+  overlay.style.top = canvas.offsetTop + 'px';
+  overlay.style.left = canvas.offsetLeft + 'px';
+  overlay.style.width = canvas.offsetWidth + 'px';
+  overlay.style.height = canvas.offsetHeight + 'px';
   
   // Draw initial crop overlay
   drawMobileCropOverlay();
@@ -2546,7 +2552,7 @@ function enableMobileCrop() {
   document.getElementById('mobileCropBtn').style.display = 'none';
   document.getElementById('mobileCropTools').style.display = 'flex';
   document.getElementById('undoMobileCropBtn').style.display = mobileHistory.length > 0 ? 'flex' : 'none';
-  showToast('Drag corners to crop');
+  showToast('Drag corners to crop or use Manual Crop');
 }
 
 function drawMobileCropOverlay() {
@@ -2636,11 +2642,14 @@ function getCropHandleAtPoint(px, py) {
 function handleMobileCropMouseDown(e) {
   if (!mobileCropActive) return;
   const overlay = document.getElementById('mobileCropOverlay');
+  const canvas = document.getElementById('mobileEditCanvas');
   const rect = overlay.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
-  const scaleX = mobileCurrentImageData.width / overlay.clientWidth;
-  const scaleY = mobileCurrentImageData.height / overlay.clientHeight;
+  
+  // Use canvas dimensions for proper scaling
+  const scaleX = mobileCurrentImageData.width / canvas.offsetWidth;
+  const scaleY = mobileCurrentImageData.height / canvas.offsetHeight;
   
   mobileCropDragHandle = getCropHandleAtPoint(x, y);
   if (mobileCropDragHandle) {
@@ -2654,12 +2663,15 @@ function handleMobileCropMouseDown(e) {
 function handleMobileCropTouchStart(e) {
   if (!mobileCropActive) return;
   const overlay = document.getElementById('mobileCropOverlay');
+  const canvas = document.getElementById('mobileEditCanvas');
   const rect = overlay.getBoundingClientRect();
   const touch = e.touches[0];
   const x = touch.clientX - rect.left;
   const y = touch.clientY - rect.top;
-  const scaleX = mobileCurrentImageData.width / overlay.clientWidth;
-  const scaleY = mobileCurrentImageData.height / overlay.clientHeight;
+  
+  // Use canvas dimensions for proper scaling
+  const scaleX = mobileCurrentImageData.width / canvas.offsetWidth;
+  const scaleY = mobileCurrentImageData.height / canvas.offsetHeight;
   
   mobileCropDragHandle = getCropHandleAtPoint(x, y);
   if (mobileCropDragHandle) {
@@ -2673,9 +2685,10 @@ function handleMobileCropTouchStart(e) {
 function handleMobileCropMouseMove(e) {
   if (!mobileCropActive || !mobileCropDragging) return;
   const overlay = document.getElementById('mobileCropOverlay');
+  const canvas = document.getElementById('mobileEditCanvas');
   const rect = overlay.getBoundingClientRect();
-  const scaleX = mobileCurrentImageData.width / overlay.clientWidth;
-  const scaleY = mobileCurrentImageData.height / overlay.clientHeight;
+  const scaleX = mobileCurrentImageData.width / canvas.offsetWidth;
+  const scaleY = mobileCurrentImageData.height / canvas.offsetHeight;
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   updateCropRect(x * scaleX, y * scaleY);
@@ -2685,10 +2698,11 @@ function handleMobileCropTouchMove(e) {
   if (!mobileCropActive || !mobileCropDragging) return;
   e.preventDefault();
   const overlay = document.getElementById('mobileCropOverlay');
+  const canvas = document.getElementById('mobileEditCanvas');
   const rect = overlay.getBoundingClientRect();
   const touch = e.touches[0];
-  const scaleX = mobileCurrentImageData.width / overlay.clientWidth;
-  const scaleY = mobileCurrentImageData.height / overlay.clientHeight;
+  const scaleX = mobileCurrentImageData.width / canvas.offsetWidth;
+  const scaleY = mobileCurrentImageData.height / canvas.offsetHeight;
   const x = touch.clientX - rect.left;
   const y = touch.clientY - rect.top;
   updateCropRect(x * scaleX, y * scaleY);
@@ -2764,11 +2778,17 @@ function handleMobileCropTouchEnd() {
 
 function cancelMobileCrop() {
   const overlay = document.getElementById('mobileCropOverlay');
+  const preview = document.getElementById('mobileEditPreview');
   mobileCropActive = false;
   mobileCropRect = { x: 0, y: 0, w: 0, h: 0 };
   mobileCropDragging = false;
   mobileCropDragHandle = null;
   mobileHistory = []; // clear history when exiting crop mode
+  
+  // Restore container styling
+  preview.style.minHeight = '250px';
+  preview.style.border = '1px solid var(--border)';
+  preview.style.boxShadow = 'none';
   
   // Remove event listeners
   document.removeEventListener('mousemove', handleMobileCropMouseMove, true);
@@ -2864,19 +2884,52 @@ function applyMobileManualCrop() {
   const clampedW = Math.max(1, Math.min(w, imgW - clampedX));
   const clampedH = Math.max(1, Math.min(h, imgH - clampedY));
 
-  // Update mobile crop rect
-  mobileCropRect = {
-    x: clampedX,
-    y: clampedY,
-    w: clampedW,
-    h: clampedH
-  };
+  // Apply the crop directly (unlike desktop which just sets visual crop)
+  const sx = Math.round(clampedX);
+  const sy = Math.round(clampedY);
+  const sw = Math.round(clampedW);
+  const sh = Math.round(clampedH);
   
-  mobileCropActive = true;
-  drawMobileCropOverlay();
+  // Create new canvas and crop
+  const srcCanvas = document.getElementById('mobileEditCanvas');
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = sw;
+  tempCanvas.height = sh;
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.drawImage(srcCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+  
+  // Save to history for undo
+  if (mobileHistory.length > 0 || (!mobileHistory.length && mobileOriginalImageData)) {
+    const histData = new ImageData(
+      new Uint8ClampedArray(mobileCurrentImageData.data),
+      mobileCurrentImageData.width,
+      mobileCurrentImageData.height
+    );
+    mobileHistory.push(histData);
+  }
+  
+  // Update both image data objects
+  mobileOriginalImageData = tempCtx.getImageData(0, 0, sw, sh);
+  mobileCurrentImageData = new ImageData(new Uint8ClampedArray(mobileOriginalImageData.data), mobileOriginalImageData.width, mobileOriginalImageData.height);
+  
+  // Reset adjustments since we're working with new cropped image
+  document.getElementById('mobileBrightness').value = 0;
+  document.getElementById('mobileContrast').value = 0;
+  document.getElementById('mobileSharpness').value = 0;
+  document.getElementById('mobileSaturation').value = 0;
+  
+  // Close modal and exit crop mode
   document.getElementById('manualCropModal').classList.remove('open');
   document.getElementById('manualCropModal').removeAttribute('data-mobile');
-  showToast('Manual crop set!');
+  
+  // Restore container styling
+  const preview = document.getElementById('mobileEditPreview');
+  preview.style.minHeight = '250px';
+  preview.style.border = '1px solid var(--border)';
+  preview.style.boxShadow = 'none';
+  
+  updateMobileEditPreview();
+  showToast('Manual crop applied!');
 }
 
 function setMobileA4Crop() {
