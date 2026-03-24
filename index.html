@@ -912,8 +912,8 @@
       <div class="section-subtitle">Apply effects and adjustments</div>
       
       <div id="mobileEditPreview" style="border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); min-height: 250px; overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; position: relative; width: 100%;">
-        <canvas id="mobileEditCanvas" style="max-width: 100%; max-height: 100%; display: block;"></canvas>
-        <canvas id="mobileCropOverlay" style="position: absolute; top: 0; left: 0; display: none; cursor: crosshair;"></canvas>
+        <canvas id="mobileEditCanvas" style="display: block; margin: 0 auto;"></canvas>
+        <canvas id="mobileCropOverlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; cursor: crosshair;"></canvas>
       </div>
 
       <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px; color:var(--text);">Effects</div>
@@ -2369,10 +2369,18 @@ function updateMobileEditPreview() {
   const maxW = preview.clientWidth - 2;
   const maxH = 250;
   const scale = Math.min(maxW / mobileCurrentImageData.width, maxH / mobileCurrentImageData.height, 1);
+
+  // Set canvas internal dimensions
   canvas.width = mobileCurrentImageData.width;
   canvas.height = mobileCurrentImageData.height;
-  canvas.style.maxWidth = (mobileCurrentImageData.width * scale) + 'px';
-  canvas.style.maxHeight = (mobileCurrentImageData.height * scale) + 'px';
+
+  // Set display dimensions for centering
+  const displayWidth = mobileCurrentImageData.width * scale;
+  const displayHeight = mobileCurrentImageData.height * scale;
+  canvas.style.width = displayWidth + 'px';
+  canvas.style.height = displayHeight + 'px';
+  canvas.style.margin = '0 auto';
+
   const ctx = canvas.getContext('2d');
   ctx.putImageData(mobileCurrentImageData, 0, 0);
 }
@@ -2437,12 +2445,19 @@ function enableMobileCrop() {
   // Use original dimensions internally but scale for display
   overlay.width = canvas.width;
   overlay.height = canvas.height;
+
+  // Set display dimensions to match canvas
+  const displayWidth = imgData.width * displayScale;
+  const displayHeight = imgData.height * displayScale;
+  overlay.style.width = displayWidth + 'px';
+  overlay.style.height = displayHeight + 'px';
+
+  // Position overlay absolutely centered over canvas
   overlay.style.display = 'block';
-  overlay.style.top = '0';
-  overlay.style.left = '0';
-  // Apply same CSS scaling as the canvas for coordinate mapping
-  overlay.style.maxWidth = (imgData.width * displayScale) + 'px';
-  overlay.style.maxHeight = (imgData.height * displayScale) + 'px';
+  overlay.style.top = '50%';
+  overlay.style.left = '50%';
+  overlay.style.transform = 'translate(-50%, -50%)';
+  overlay.style.position = 'absolute';
   
   // Draw initial crop overlay
   drawMobileCropOverlay();
