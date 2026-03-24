@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="DocScan Pro">
 <meta name="description" content="Advanced document scanning and enhancement app">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3553125608385165"
+     crossorigin="anonymous"></script>
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNlOGZmNDciIHN0cm9rZS13aWR0aD0iMiI+CjxyZWN0IHg9IjUiIHk9IjMiIHdpZHRoPSIxNCIgaGVpZ2h0PSIxOCIgcng9IjIiLz4KPHBhdGggZD0iTTkgN2g2TTkgMTFoNk05IDE1aDQiLz4KPC9zdmc+" sizes="192x192">
 <title>KingzScan Pro</title>
@@ -1120,6 +1122,10 @@ let isMoving = false;
 let moveStart = null;
 let history = []; // for undo
 let deferredPrompt = null; // for PWA install prompt
+
+// ── PAGE SELECTION FOR EXPORT ──
+let selectedPagesForExport = new Set(); // tracks which pages are selected for export
+let mobileSelectedPagesForExport = new Set(); // mobile version
 
 // ── LOCAL STORAGE ──
 function savePagesToStorage() {
