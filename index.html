@@ -2411,10 +2411,11 @@ let mobileCropStartY = 0;
 function enableMobileCrop() {
   if (!mobileOriginalImageData && !mobileCurrentImageData) return;
   mobileCropActive = true;
-  
+
   const canvas = document.getElementById('mobileEditCanvas');
   const overlay = document.getElementById('mobileCropOverlay');
-  
+  const preview = document.getElementById('mobileEditPreview');
+
   // Setup default crop area (80% of image)
   const imgData = mobileCurrentImageData || mobileOriginalImageData;
   const w = imgData.width;
@@ -2427,13 +2428,22 @@ function enableMobileCrop() {
     w: cropW,
     h: cropH
   };
-  
-  // Setup overlay canvas with absolute positioning matching canvas
+
+  // Get the display scale factor (CSS scaling)
+  const maxW = preview.clientWidth - 2;
+  const maxH = 250;
+  const displayScale = Math.min(maxW / imgData.width, maxH / imgData.height, 1);
+
+  // Setup overlay canvas with proper display sizing
+  // Use original dimensions internally but scale for display
   overlay.width = canvas.width;
   overlay.height = canvas.height;
   overlay.style.display = 'block';
   overlay.style.top = '0';
   overlay.style.left = '0';
+  // Apply same CSS scaling as the canvas for coordinate mapping
+  overlay.style.maxWidth = (imgData.width * displayScale) + 'px';
+  overlay.style.maxHeight = (imgData.height * displayScale) + 'px';
   
   // Draw initial crop overlay
   drawMobileCropOverlay();
@@ -2455,83 +2465,125 @@ function drawMobileCropOverlay() {
   const overlay = document.getElementById('mobileCropOverlay');
   const canvas = document.getElementById('mobileEditCanvas');
   if (!overlay || !canvas) return;
-  
+
   const ctx = overlay.getContext('2d');
   const imgData = mobileCurrentImageData || mobileOriginalImageData;
   if (!imgData) return;
-  
-  // Use actual canvas dimensions (already set to match image in updateMobileEditPreview)
-  const displayWidth = canvas.width;
-  const displayHeight = canvas.height;
-  const scaleX = displayWidth / imgData.width;
-  const scaleY = displayHeight / imgData.height;
-  
+
+  // Overlay canvas internal dimensions match the image (NOT the display size)
+  const canvasWidth = overlay.width;
+  const canvasHeight = overlay.height;
+
   // Clear overlay
-  ctx.fillStyle = 'rgba(0, 0, 0, 0)';
-  ctx.clearRect(0, 0, displayWidth, displayHeight);
-  
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
   // Draw semi-transparent overlay outside crop area
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  const cropX = mobileCropRect.x * scaleX;
-  const cropY = mobileCropRect.y * scaleY;
-  const cropW = mobileCropRect.w * scaleX;
-  const cropH = mobileCropRect.h * scaleY;
-  
+
+  // Crop coordinates are in image space, which matches canvas internal dimensions
+  const cropX = mobileCropRect.x;
+  const cropY = mobileCropRect.y;
+  const cropW = mobileCropRect.w;
+  const cropH = mobileCropRect.h;
+
   // Fill four corners (outside crop area)
-  ctx.fillRect(0, 0, displayWidth, cropY);
-  ctx.fillRect(0, cropY + cropH, displayWidth, displayHeight - cropY - cropH);
+  ctx.fillRect(0, 0, canvasWidth, cropY);
+  ctx.fillRect(0, cropY + cropH, canvasWidth, canvasHeight - cropY - cropH);
   ctx.fillRect(0, cropY, cropX, cropH);
-  ctx.fillRect(cropX + cropW, cropY, displayWidth - cropX - cropW, cropH);
-  
+  ctx.fillRect(cropX + cropW, cropY, canvasWidth - cropX - cropW, cropH);
+
   // Draw crop rectangle border
   ctx.strokeStyle = '#e8ff47';
   ctx.lineWidth = 3;
   ctx.strokeRect(cropX, cropY, cropW, cropH);
-  
-  // Draw resize handles
-  const handleSize = 20;
+
+  // Draw corner handles (28px squares)
+  const cornerSize = 28;
   ctx.fillStyle = '#e8ff47';
   ctx.shadowColor = 'rgba(0,0,0,0.5)';
   ctx.shadowBlur = 4;
-  
-  const handles = [
-    { x: cropX - handleSize/2, y: cropY - handleSize/2 },
-    { x: cropX + cropW - handleSize/2, y: cropY - handleSize/2 },
-    { x: cropX - handleSize/2, y: cropY + cropH - handleSize/2 },
-    { x: cropX + cropW - handleSize/2, y: cropY + cropH - handleSize/2 }
+
+  const corners = [
+    { x: cropX - cornerSize/2, y: cropY - cornerSize/2 },
+    { x: cropX + cropW - cornerSize/2, y: cropY - cornerSize/2 },
+    { x: cropX - cornerSize/2, y: cropY + cropH - cornerSize/2 },
+    { x: cropX + cropW - cornerSize/2, y: cropY + cropH - cornerSize/2 }
   ];
-  handles.forEach(h => {
-    ctx.fillRect(h.x, h.y, handleSize, handleSize);
+  corners.forEach(h => {
+    ctx.fillRect(h.x, h.y, cornerSize, cornerSize);
   });
-  
+
+  // Draw edge handles (rectangles: 32px wide × 12px tall for horizontal, 12px wide × 32px tall for vertical)
+  ctx.fillStyle = '#ffb800';
+  const edgeHandles = [
+    { x: cropX + cropW/2 - 16, y: cropY - 6, w: 32, h: 12 }, // top
+    { x: cropX + cropW/2 - 16, y: cropY + cropH - 6, w: 32, h: 12 }, // bottom
+    { x: cropX - 6, y: cropY + cropH/2 - 16, w: 12, h: 32 }, // left
+    { x: cropX + cropW - 6, y: cropY + cropH/2 - 16, w: 12, h: 32 }  // right
+  ];
+  edgeHandles.forEach(h => {
+    ctx.fillRect(h.x, h.y, h.w, h.h);
+  });
+
+  // Draw dimension text
+  const width = Math.round(mobileCropRect.w);
+  const height = Math.round(mobileCropRect.h);
+  const dimensionText = `${width}×${height}px`;
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.font = 'bold 14px sans-serif';
+  const textMetrics = ctx.measureText(dimensionText);
+  const textX = cropX + cropW/2 - textMetrics.width/2;
+  const textY = cropY - 15;
+
+  // Draw semi-transparent background for text
+  ctx.fillRect(textX - 8, textY - 16, textMetrics.width + 16, 20);
+  ctx.fillStyle = '#e8ff47';
+  ctx.fillText(dimensionText, textX, textY);
+
   ctx.shadowColor = 'rgba(0,0,0,0)';
 }
 
 function getCropHandleAtPoint(px, py) {
-  const canvas = document.getElementById('mobileEditCanvas');
+  const overlay = document.getElementById('mobileCropOverlay');
   const imgData = mobileCurrentImageData || mobileOriginalImageData;
-  if (!imgData) return null;
-  
-  const displayWidth = canvas.width;
-  const displayHeight = canvas.height;
-  const scaleX = displayWidth / imgData.width;
-  const scaleY = displayHeight / imgData.height;
-  
-  const cropX = mobileCropRect.x * scaleX;
-  const cropY = mobileCropRect.y * scaleY;
-  const cropW = mobileCropRect.w * scaleX;
-  const cropH = mobileCropRect.h * scaleY;
-  const threshold = 30;
-  
-  // Check corners first
-  if (Math.abs(px - cropX) < threshold && Math.abs(py - cropY) < threshold) return 'tl';
-  if (Math.abs(px - (cropX + cropW)) < threshold && Math.abs(py - cropY) < threshold) return 'tr';
-  if (Math.abs(px - cropX) < threshold && Math.abs(py - (cropY + cropH)) < threshold) return 'bl';
-  if (Math.abs(px - (cropX + cropW)) < threshold && Math.abs(py - (cropY + cropH)) < threshold) return 'br';
-  
-  // Check if inside crop area
-  if (px > cropX && px < cropX + cropW && py > cropY && py < cropY + cropH) return 'move';
-  
+  if (!imgData || !overlay) return null;
+
+  // px, py are in overlay's DISPLAY space
+  // Convert to IMAGE space (overlay internal coordinates)
+  const overlayRect = overlay.getBoundingClientRect();
+  const displayWidth = overlayRect.width;
+  const displayHeight = overlayRect.height;
+
+  // Scale from display coordinates to internal image coordinates
+  const scaleX = overlay.width / displayWidth;
+  const scaleY = overlay.height / displayHeight;
+
+  // Convert to image space
+  const imageX = px * scaleX;
+  const imageY = py * scaleY;
+
+  const cropX = mobileCropRect.x;
+  const cropY = mobileCropRect.y;
+  const cropW = mobileCropRect.w;
+  const cropH = mobileCropRect.h;
+  const threshold = Math.max(40 * scaleX, 20); // Scale threshold appropriately
+
+  // Check corners first (higher priority)
+  if (Math.abs(imageX - cropX) < threshold && Math.abs(imageY - cropY) < threshold) return 'tl';
+  if (Math.abs(imageX - (cropX + cropW)) < threshold && Math.abs(imageY - cropY) < threshold) return 'tr';
+  if (Math.abs(imageX - cropX) < threshold && Math.abs(imageY - (cropY + cropH)) < threshold) return 'bl';
+  if (Math.abs(imageX - (cropX + cropW)) < threshold && Math.abs(imageY - (cropY + cropH)) < threshold) return 'br';
+
+  // Check edges (top, bottom, left, right)
+  if (Math.abs(imageY - cropY) < threshold && imageX > cropX + threshold && imageX < cropX + cropW - threshold) return 'top';
+  if (Math.abs(imageY - (cropY + cropH)) < threshold && imageX > cropX + threshold && imageX < cropX + cropW - threshold) return 'bottom';
+  if (Math.abs(imageX - cropX) < threshold && imageY > cropY + threshold && imageY < cropY + cropH - threshold) return 'left';
+  if (Math.abs(imageX - (cropX + cropW)) < threshold && imageY > cropY + threshold && imageY < cropY + cropH - threshold) return 'right';
+
+  // Check if inside crop area for move
+  if (imageX > cropX && imageX < cropX + cropW && imageY > cropY && imageY < cropY + cropH) return 'move';
+
   return null;
 }
 
@@ -2585,23 +2637,34 @@ function handleMobileCropTouchMove(e) {
 }
 
 function updateCropRect(x, y) {
-  const canvas = document.getElementById('mobileEditCanvas');
+  const overlay = document.getElementById('mobileCropOverlay');
   const imgData = mobileCurrentImageData || mobileOriginalImageData;
-  
-  const deltaX = x - mobileCropStartX;
-  const deltaY = y - mobileCropStartY;
-  
-  const displayWidth = canvas.width;
-  const displayHeight = canvas.height;
-  const scaleX = imgData.width / displayWidth;
-  const scaleY = imgData.height / displayHeight;
-  
-  const deltaImgX = deltaX * scaleX;
-  const deltaImgY = deltaY * scaleY;
-  
+  if (!overlay || !imgData) return;
+
+  // x, y are in overlay DISPLAY space
+  // Convert to IMAGE space (overlay internal coordinates)
+  const overlayRect = overlay.getBoundingClientRect();
+  const displayWidth = overlayRect.width;
+  const displayHeight = overlayRect.height;
+
+  // Scale from display coordinates to internal image coordinates
+  const scaleX = overlay.width / displayWidth;
+  const scaleY = overlay.height / displayHeight;
+
+  // Convert current position to image space
+  const imageX = x * scaleX;
+  const imageY = y * scaleY;
+
+  // Convert start position to image space
+  const startImageX = mobileCropStartX * scaleX;
+  const startImageY = mobileCropStartY * scaleY;
+
+  const deltaImgX = imageX - startImageX;
+  const deltaImgY = imageY - startImageY;
+
   const minW = 50, minH = 50;
   const maxX = imgData.width, maxY = imgData.height;
-  
+
   if (mobileCropDragHandle === 'move') {
     mobileCropRect.x = Math.max(0, Math.min(mobileCropRect.x + deltaImgX, maxX - mobileCropRect.w));
     mobileCropRect.y = Math.max(0, Math.min(mobileCropRect.y + deltaImgY, maxY - mobileCropRect.h));
@@ -2637,8 +2700,27 @@ function updateCropRect(x, y) {
     const newH = mobileCropRect.h + deltaImgY;
     if (newW > minW) mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
     if (newH > minH) mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
+  } else if (mobileCropDragHandle === 'top') {
+    const newH = mobileCropRect.h - deltaImgY;
+    if (newH > minH) {
+      mobileCropRect.y = Math.max(0, mobileCropRect.y + deltaImgY);
+      mobileCropRect.h = newH;
+    }
+  } else if (mobileCropDragHandle === 'bottom') {
+    const newH = mobileCropRect.h + deltaImgY;
+    if (newH > minH) mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
+  } else if (mobileCropDragHandle === 'left') {
+    const newW = mobileCropRect.w - deltaImgX;
+    if (newW > minW) {
+      mobileCropRect.x = Math.max(0, mobileCropRect.x + deltaImgX);
+      mobileCropRect.w = newW;
+    }
+  } else if (mobileCropDragHandle === 'right') {
+    const newW = mobileCropRect.w + deltaImgX;
+    if (newW > minW) mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
   }
-  
+
+  // Store position in display space for next drag iteration
   mobileCropStartX = x;
   mobileCropStartY = y;
   drawMobileCropOverlay();
