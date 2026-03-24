@@ -1,50 +1,40 @@
 # Netlify Configuration for KINGZ-SCANNER Pro
+# Single-file PWA deployment
 
 [build]
-  # No build command needed - single file PWA
+  # No build command - single file PWA
   command = ""
   publish = "."
 
-# Redirect rules for single-page app
+# Redirect all routes to index.html (SPA behavior)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# Cache settings
+# Cache strategy for HTML
 [[headers]]
-  for = "/*"
+  for = "/*.html"
   [headers.values]
-    Cache-Control = "public, max-age=3600"
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Content-Type = "text/html; charset=utf-8"
 
-# Service Worker cache - no cache
+# Cache strategy for service worker (always fresh)
 [[headers]]
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
+    Content-Type = "application/javascript"
 
-# Manifest cache
+# Cache strategy for static assets
 [[headers]]
-  for = "/manifest.json"
+  for = "/*.{js,json,svg,jpg,jpeg,png,gif,webp,woff,woff2,ttf,eot}"
   [headers.values]
-    Cache-Control = "public, max-age=3600"
-    Content-Type = "application/manifest+json"
+    Cache-Control = "public, max-age=31536000, immutable"
 
-# HTML file cache
+# Enable gzip compression for text
 [[headers]]
-  for = "/*.html"
-  [headers.values]
-    Cache-Control = "public, max-age=3600"
-    Content-Type = "text/html; charset=utf-8"
-
-# Image cache (1 day)
-[[headers]]
-  for = "/*.{jpg,jpeg,png,gif,webp,svg}"
-  [headers.values]
-    Cache-Control = "public, max-age=86400"
-
-# Enable GZIP compression
-[[headers]]
-  for = "/*"
+  for = "/*.{html,css,js,json}"
   [headers.values]
     Content-Encoding = "gzip"
+
