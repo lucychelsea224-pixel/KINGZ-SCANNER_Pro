@@ -803,26 +803,22 @@
     <!-- EXPORT -->
     <div class="sidebar-section">
       <h4>Export & Share</h4>
+
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--text);">Download Format:</label>
+        <select id="exportFormat" style="width: 100%; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
+          <option value="png">PNG (Lossless)</option>
+          <option value="jpeg">JPEG (Compressed)</option>
+          <option value="pdf">PDF (Multi-page)</option>
+        </select>
+      </div>
+
       <div class="export-grid">
-        <button class="export-btn" onclick="downloadPNG()">
+        <button class="export-btn" onclick="exportDocument()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
           </svg>
-          PNG
-        </button>
-        <button class="export-btn" onclick="downloadJPEG()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-          </svg>
-          JPEG
-        </button>
-        <button class="export-btn" onclick="downloadPDF()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <path d="M9 13h6M9 17h4"/>
-          </svg>
-          PDF
+          Download
         </button>
         <button class="export-btn" onclick="shareDoc()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -986,30 +982,24 @@
     <div class="mobile-section" id="exportSection">
       <div class="section-title">💾 Export Document</div>
       <div class="section-subtitle">Download your scanned document in your preferred format</div>
-      
+
       <div id="mobileExportPreview" style="border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); min-height: 200px; overflow: auto; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; padding: 12px;">
         <canvas id="mobileExportCanvas" style="max-width: 100%; max-height: 100%;"></canvas>
       </div>
 
-      <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px; color:var(--text);">Export Format</div>
+      <div style="font-size:0.85rem; font-weight:600; margin-bottom:6px; color:var(--text);">Download Format:</div>
+      <select id="mobileExportFormat" style="width: 100%; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; margin-bottom: 12px;">
+        <option value="png">PNG (Lossless)</option>
+        <option value="jpeg">JPEG (Compressed)</option>
+        <option value="pdf">PDF (Multi-page)</option>
+      </select>
+
       <div class="export-grid">
-        <button class="export-btn" onclick="downloadMobilePNG()" style="font-size:0.75rem;">
+        <button class="export-btn" onclick="exportMobileDocument()" style="font-size:0.75rem;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
           </svg>
-          PNG
-        </button>
-        <button class="export-btn" onclick="downloadMobileJPEG()" style="font-size:0.75rem;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-          </svg>
-          JPEG
-        </button>
-        <button class="export-btn" onclick="downloadMobilePDF()" style="font-size:0.75rem;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/>
-          </svg>
-          PDF
+          Download
         </button>
         <button class="export-btn" onclick="shareMobileDoc()" style="font-size:0.75rem;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2065,6 +2055,19 @@ function downloadPDF() {
   showToast('PDF downloaded!');
 }
 
+// ── NEW: Desktop Export with Format Selection ──
+function exportDocument() {
+  const format = document.getElementById('exportFormat').value;
+
+  if (format === 'png') {
+    downloadPNG();
+  } else if (format === 'jpeg') {
+    downloadJPEG();
+  } else if (format === 'pdf') {
+    downloadPDF();
+  }
+}
+
 function shareDoc() {
   document.getElementById('shareModal').classList.add('open');
 }
@@ -2983,7 +2986,7 @@ function downloadMobileJPEG() {
 
 function downloadMobilePDF() {
   if (mobilePages.length === 0) return;
-  
+
   const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF;
   if (!jsPDFClass) {
     showToast('PDF library not loaded');
@@ -3012,6 +3015,19 @@ function downloadMobilePDF() {
   });
   pdf.save('scan.pdf');
   showToast('PDF downloaded!');
+}
+
+// ── NEW: Mobile Export with Format Selection ──
+function exportMobileDocument() {
+  const format = document.getElementById('mobileExportFormat').value;
+
+  if (format === 'png') {
+    downloadMobilePNG();
+  } else if (format === 'jpeg') {
+    downloadMobileJPEG();
+  } else if (format === 'pdf') {
+    downloadMobilePDF();
+  }
 }
 
 async function shareMobileDoc() {
