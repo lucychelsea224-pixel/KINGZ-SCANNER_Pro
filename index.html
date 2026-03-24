@@ -1708,7 +1708,6 @@ function doCrop(e) {
   const dy = pt.y - dragState.origin.y;
 
   const r = { ...dragState.rect };
-  const minSize = 20;
   const w = mainCanvas.width;
   const h = mainCanvas.height;
 
@@ -1744,13 +1743,13 @@ function doCrop(e) {
     }
   }
 
-  // Enforce minimum size
-  r.w = Math.max(minSize, r.w);
-  r.h = Math.max(minSize, r.h);
-  
+  // Allow free resizing without minimum size restriction
+  r.w = Math.max(1, r.w);
+  r.h = Math.max(1, r.h);
+
   // Enforce image boundaries
   clampRect(r);
-  
+
   cropRect = r;
   updateCropUI();
 }
@@ -2662,62 +2661,57 @@ function updateCropRect(x, y) {
   const deltaImgX = imageX - startImageX;
   const deltaImgY = imageY - startImageY;
 
-  const minW = 50, minH = 50;
   const maxX = imgData.width, maxY = imgData.height;
 
   if (mobileCropDragHandle === 'move') {
     mobileCropRect.x = Math.max(0, Math.min(mobileCropRect.x + deltaImgX, maxX - mobileCropRect.w));
     mobileCropRect.y = Math.max(0, Math.min(mobileCropRect.y + deltaImgY, maxY - mobileCropRect.h));
   } else if (mobileCropDragHandle === 'tl') {
-    const newW = mobileCropRect.w - deltaImgX;
-    const newH = mobileCropRect.h - deltaImgY;
-    if (newW > minW) {
-      mobileCropRect.x = Math.max(0, mobileCropRect.x + deltaImgX);
-      mobileCropRect.w = newW;
-    }
-    if (newH > minH) {
-      mobileCropRect.y = Math.max(0, mobileCropRect.y + deltaImgY);
-      mobileCropRect.h = newH;
-    }
+    // Top-left: resize freely without minimum size
+    const newW = Math.max(1, mobileCropRect.w - deltaImgX);
+    const newH = Math.max(1, mobileCropRect.h - deltaImgY);
+    mobileCropRect.x = Math.max(0, Math.min(mobileCropRect.x + deltaImgX, maxX - newW));
+    mobileCropRect.y = Math.max(0, Math.min(mobileCropRect.y + deltaImgY, maxY - newH));
+    mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
+    mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
   } else if (mobileCropDragHandle === 'tr') {
-    const newW = mobileCropRect.w + deltaImgX;
-    const newH = mobileCropRect.h - deltaImgY;
-    if (newW > minW) mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
-    if (newH > minH) {
-      mobileCropRect.y = Math.max(0, mobileCropRect.y + deltaImgY);
-      mobileCropRect.h = newH;
-    }
+    // Top-right: resize freely without minimum size
+    const newW = Math.max(1, mobileCropRect.w + deltaImgX);
+    const newH = Math.max(1, mobileCropRect.h - deltaImgY);
+    mobileCropRect.y = Math.max(0, Math.min(mobileCropRect.y + deltaImgY, maxY - newH));
+    mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
+    mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
   } else if (mobileCropDragHandle === 'bl') {
-    const newW = mobileCropRect.w - deltaImgX;
-    const newH = mobileCropRect.h + deltaImgY;
-    if (newW > minW) {
-      mobileCropRect.x = Math.max(0, mobileCropRect.x + deltaImgX);
-      mobileCropRect.w = newW;
-    }
-    if (newH > minH) mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
+    // Bottom-left: resize freely without minimum size
+    const newW = Math.max(1, mobileCropRect.w - deltaImgX);
+    const newH = Math.max(1, mobileCropRect.h + deltaImgY);
+    mobileCropRect.x = Math.max(0, Math.min(mobileCropRect.x + deltaImgX, maxX - newW));
+    mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
+    mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
   } else if (mobileCropDragHandle === 'br') {
-    const newW = mobileCropRect.w + deltaImgX;
-    const newH = mobileCropRect.h + deltaImgY;
-    if (newW > minW) mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
-    if (newH > minH) mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
+    // Bottom-right: resize freely without minimum size
+    const newW = Math.max(1, mobileCropRect.w + deltaImgX);
+    const newH = Math.max(1, mobileCropRect.h + deltaImgY);
+    mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
+    mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
   } else if (mobileCropDragHandle === 'top') {
-    const newH = mobileCropRect.h - deltaImgY;
-    if (newH > minH) {
-      mobileCropRect.y = Math.max(0, mobileCropRect.y + deltaImgY);
-      mobileCropRect.h = newH;
-    }
+    // Top edge: resize freely without minimum size
+    const newH = Math.max(1, mobileCropRect.h - deltaImgY);
+    mobileCropRect.y = Math.max(0, Math.min(mobileCropRect.y + deltaImgY, maxY - newH));
+    mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
   } else if (mobileCropDragHandle === 'bottom') {
-    const newH = mobileCropRect.h + deltaImgY;
-    if (newH > minH) mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
+    // Bottom edge: resize freely without minimum size
+    const newH = Math.max(1, mobileCropRect.h + deltaImgY);
+    mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
   } else if (mobileCropDragHandle === 'left') {
-    const newW = mobileCropRect.w - deltaImgX;
-    if (newW > minW) {
-      mobileCropRect.x = Math.max(0, mobileCropRect.x + deltaImgX);
-      mobileCropRect.w = newW;
-    }
+    // Left edge: resize freely without minimum size
+    const newW = Math.max(1, mobileCropRect.w - deltaImgX);
+    mobileCropRect.x = Math.max(0, Math.min(mobileCropRect.x + deltaImgX, maxX - newW));
+    mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
   } else if (mobileCropDragHandle === 'right') {
-    const newW = mobileCropRect.w + deltaImgX;
-    if (newW > minW) mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
+    // Right edge: resize freely without minimum size
+    const newW = Math.max(1, mobileCropRect.w + deltaImgX);
+    mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
   }
 
   // Store position in display space for next drag iteration
