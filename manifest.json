@@ -10,12 +10,12 @@
   "categories": ["productivity", "utilities"],
   "icons": [
     {
-      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNlOGZmNDciIHN0cm9rZS13aWR0aD0iMiI+CjxyZWN0IHg9IjUiIHk9IjMiIHdpZHRoPSIxNCIgaGVpZ2h0PSIxOCIgcng9IjIiLz4KPHBhdGggZD0iTTkgN2g2TTkgMTFoNk05IDE1aDQiLz4KPC9zdmc+",
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2U4ZmY0NyIgc3Ryb2tlLXdpZHRoPSI4Ij4KICA8cmVjdCB4PSIyMCIgeT0iMTIiIHdpZHRoPSI1NiIgaGVpZ2h0PSI3MiIgcng9IjgiLz4KICAKJX4gQ3JhZiB0byBkbyBkIG9t0KPCPC9zdmc+",
       "sizes": "192x192",
       "type": "image/svg+xml"
     },
     {
-      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNlOGZmNDciIHN0cm9rZS13aWR0aD0iMiI+CjxyZWN0IHg9IjUiIHk9IjMiIHdpZHRoPSIxNCIgaGVpZ2h0PSIxOCIgcng9IjIiLz4KPHBhdGggZD0iTTkgN2g2TTkgMTFoNk05IDE1aDQiLz4KPC9zdmc+",
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2U4ZmY0NyIgc3Ryb2tlLXdpZHRoPSIyMCI+CiAgPHJlY3QgeD0iNTAiIHk9IjMwIiB3aWR0aD0iNDEyIiBoZWlnaHQ9IjQ1MiIgcng9IjIwIi8+CiAgPHBhdGggZD0iTTIyNSAxNDBoODZNMjI1IDI1aDg2TTIyNSA0MzBoNjYiIHN0cm9rZT0iI2U4ZmY0NyIgc3Ryb2tlLXdpZHRoPSIyMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPg==",
       "sizes": "512x512",
       "type": "image/svg+xml"
     }
