@@ -1,6 +1,6 @@
 {
-  "name": "DocScan Pro",
-  "short_name": "DocScan",
+  "name": "KINGZSCANPRO",
+  "short_name": "KINGZSCAN",
   "description": "Advanced document scanning and enhancement app",
   "start_url": "./index.html",
   "display": "standalone",
