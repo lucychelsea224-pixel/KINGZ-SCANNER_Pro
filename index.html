@@ -1284,21 +1284,119 @@ let deferredPrompt = null; // for PWA install prompt
 let selectedPagesForExport = new Set(); // tracks which pages are selected for export
 let mobileSelectedPagesForExport = new Set(); // mobile version
 
-// ── LOCAL STORAGE ──
-function savePagesToStorage() {
-  localStorage.setItem('scannerPages', JSON.stringify(pages));
+// ── LOCAL STORAGE & INDEXEDDB ──
+const DB_NAME = 'DocScannerDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'pages';
+let db = null;
+
+// Initialize IndexedDB
+function initIndexedDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      db = request.result;
+      resolve(db);
+    };
+
+    request.onupgradeneeded = (event) => {
+      const database = event.target.result;
+      if (!database.objectStoreNames.contains(STORE_NAME)) {
+        database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+      }
+    };
+  });
 }
 
-function loadPagesFromStorage() {
-  const stored = localStorage.getItem('scannerPages');
-  if (stored) {
-    pages = JSON.parse(stored);
-    if (pages.length > 0) {
-      selectedPage = 0;
-      selectPage(0);
-    }
-    updatePagesList();
+// Save all pages to IndexedDB
+function savePagesToIndexedDB(pagesToSave) {
+  if (!db) {
+    console.warn('IndexedDB not initialized, using fallback');
+    savePagesToStorage(pagesToSave);
+    return Promise.resolve();
   }
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+
+    // Clear existing pages
+    store.clear();
+
+    // Add each page
+    pagesToSave.forEach(page => {
+      store.add({
+        dataURL: page.dataURL,
+        thumb: page.thumb,
+        width: page.width,
+        height: page.height,
+        timestamp: Date.now()
+      });
+    });
+
+    transaction.onerror = () => reject(transaction.error);
+    transaction.oncomplete = () => {
+      resolve();
+      // Also save to localStorage as backup
+      savePagesToStorage(pagesToSave);
+    };
+  });
+}
+
+// Load all pages from IndexedDB
+function loadPagesFromIndexedDB() {
+  if (!db) {
+    console.warn('IndexedDB not initialized, using fallback');
+    return Promise.resolve(loadPagesFromStorage());
+  }
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.getAll();
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const loadedPages = request.result.map(page => ({
+        dataURL: page.dataURL,
+        thumb: page.thumb,
+        width: page.width,
+        height: page.height
+      }));
+      resolve(loadedPages);
+    };
+  });
+}
+
+// Fallback: Save to localStorage
+function savePagesToStorage(pagesToSave) {
+  try {
+    const dataToStore = pagesToSave.map(p => ({
+      dataURL: p.dataURL,
+      thumb: p.thumb,
+      width: p.width,
+      height: p.height
+    }));
+    localStorage.setItem('scannerPages', JSON.stringify(dataToStore));
+  } catch (e) {
+    console.error('Storage full or error:', e);
+    showToast('Storage error - some data may not be saved');
+  }
+}
+
+// Fallback: Load from localStorage
+function loadPagesFromStorage() {
+  try {
+    const stored = localStorage.getItem('scannerPages');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error('Error loading from storage:', e);
+  }
+  return [];
 }
 
 // Adjustments
@@ -2080,7 +2178,7 @@ function addPage() {
     thumb: createThumbnail(currentImageData)
   };
   pages.push(page);
-  savePagesToStorage();
+  savePagesToIndexedDB(pages);
   selectedPage = pages.length - 1;
   updatePagesList();
   showToast('Page added!');
@@ -2149,7 +2247,7 @@ function selectPage(i) {
 
 function deletePage(i) {
   pages.splice(i, 1);
-  savePagesToStorage();
+  savePagesToIndexedDB(pages);
   if (selectedPage >= pages.length) selectedPage = pages.length - 1;
   if (pages.length === 0) {
     resetAll();
@@ -2178,7 +2276,14 @@ function resetAll() {
   originalImageData = null;
   currentImageData = null;
   pages = [];
+
+  // Clear storage
   localStorage.removeItem('scannerPages');
+  if (db) {
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    transaction.objectStore(STORE_NAME).clear();
+  }
+
   selectedPage = -1;
   currentEffect = 'original';
   cropActive = false;
@@ -2192,11 +2297,6 @@ function resetAll() {
   document.getElementById('contrastVal').textContent = '0';
   document.getElementById('sharpnessVal').textContent = '0';
   document.getElementById('saturationVal').textContent = '0';
-  document.getElementById('saturationVal').textContent = '0';
-  setStep(1);
-  updatePagesList();
-}
-  document.getElementById('saturationVal').textContent = '0';
   cancelCrop();
   document.getElementById('undoCropBtn').style.display = 'none';
   canvasWrap.classList.remove('active');
@@ -2205,6 +2305,7 @@ function resetAll() {
   updatePagesList();
   setStep(1);
   showToast('Reset!');
+}
 
 // ── EXPORT ──
 function downloadPNG() {
@@ -3008,13 +3109,13 @@ function applyMobileCrop() {
 // ── MOBILE ADD PAGE (FROM SCAN SECTION) ──
 function addMobilePageFromScan() {
   if (!mobileCurrentImageData) return;
-  
+
   const canvas = document.getElementById('mobileCanvas');
   if (!canvas) {
     showToast('Error: Canvas not found');
     return;
   }
-  
+
   const dataURL = canvas.toDataURL('image/png');
   const page = {
     dataURL: dataURL,
@@ -3023,16 +3124,18 @@ function addMobilePageFromScan() {
     thumb: createThumbnail(mobileCurrentImageData, canvas),
     name: `Page ${mobilePages.length + 1}`
   };
-  
+
   mobilePages.push(page);
+  pages.push(page); // Also add to desktop pages for sync
+  savePagesToIndexedDB(pages); // Save unified pages
   mobileSelectedPage = mobilePages.length - 1;
-  
+
   // Update page count display
   document.getElementById('mobilePageCount').textContent = mobilePages.length;
-  
+
   // Update pages list and show in export
   updateMobilePagesList();
-  
+
   // Load this page into export preview
   const img = new Image();
   img.onload = () => {
@@ -3044,12 +3147,12 @@ function addMobilePageFromScan() {
     mobileCurrentImageData = ctx.getImageData(0, 0, img.width, img.height);
   };
   img.src = dataURL;
-  
+
   showToast(`Page added! Total: ${mobilePages.length}`);
-  
+
   // Switch to export section to show the pages
   showMobileSection(2);
-  
+
   // Reset for next scan
   mobileOriginalImageData = null;
   mobileCurrentImageData = null;
@@ -3092,6 +3195,8 @@ function addMobilePage() {
     name: `Page ${mobilePages.length + 1}`
   };
   mobilePages.push(page);
+  pages.push(page); // Also add to desktop pages for sync
+  savePagesToIndexedDB(pages); // Save unified pages
   mobileSelectedPage = mobilePages.length - 1;
   updateMobilePagesList();
   document.getElementById('mobilePageCount').textContent = mobilePages.length;
@@ -3161,6 +3266,8 @@ function renameMobilePage(i) {
 
 function deleteMobilePage(i) {
   mobilePages.splice(i, 1);
+  pages.splice(i, 1); // Also remove from desktop pages
+  savePagesToIndexedDB(pages); // Save unified pages
   if (mobileSelectedPage >= mobilePages.length) mobileSelectedPage = mobilePages.length - 1;
   if (mobilePages.length === 0) {
     newMobileScan();
@@ -3270,7 +3377,41 @@ function newMobileScan() {
 
 // ── INIT ──
 setStep(1);
-loadPagesFromStorage();
+
+// Initialize storage and load pages
+async function initializeApp() {
+  try {
+    // Initialize IndexedDB
+    await initIndexedDB();
+
+    // Load pages from IndexedDB
+    const loadedPages = await loadPagesFromIndexedDB();
+    if (loadedPages && loadedPages.length > 0) {
+      pages = loadedPages;
+      mobilePages = loadedPages; // Sync mobile pages with desktop
+      selectedPage = 0;
+      mobileSelectedPage = 0;
+      updatePagesList();
+      updateMobilePagesList();
+      showToast(`${loadedPages.length} page(s) restored from storage`);
+    }
+  } catch (error) {
+    console.error('Error initializing app:', error);
+    // Try fallback to localStorage
+    const fallbackPages = loadPagesFromStorage();
+    if (fallbackPages && fallbackPages.length > 0) {
+      pages = fallbackPages;
+      mobilePages = fallbackPages;
+      selectedPage = 0;
+      mobileSelectedPage = 0;
+      updatePagesList();
+      updateMobilePagesList();
+    }
+  }
+}
+
+// Call init function
+initializeApp();
 checkPwaInstall();
 buildMobileEffectGrid();
 
