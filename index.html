@@ -265,6 +265,47 @@
     margin-bottom: 14px; font-family: 'DM Mono', monospace;
   }
 
+  /* ── AD CONTAINER ── */
+  #adContainer {
+    padding: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 280px;
+  }
+
+  #adContainer .adsbygoogle {
+    display: block !important;
+  }
+
+  #adContainer.desktop {
+    display: flex;
+  }
+
+  #adContainer.mobile {
+    display: none;
+  }
+
+  /* Mobile Ad Container */
+  #adContainerMobile {
+    padding: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+  }
+
+  #adContainerMobile .adsbygoogle {
+    display: block !important;
+  }
+
   /* ── EFFECTS GRID ── */
   .effects-grid {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
@@ -565,6 +606,27 @@
       flex-direction: column;
       padding: 8px;
     }
+
+    #adContainer {
+      display: flex;
+      min-height: 250px;
+      margin: 12px;
+      padding: 12px;
+    }
+
+    #adContainer.desktop {
+      display: none;
+    }
+
+    #adContainer.mobile {
+      display: flex;
+    }
+
+    #adContainerMobile {
+      min-height: 250px;
+      margin: 0 12px 12px;
+      padding: 12px;
+    }
   }
 
   /* Mobile touch optimizations */
@@ -832,6 +894,20 @@
         </button>
       </div>
     </div>
+
+    <!-- AD CONTAINER - DESKTOP -->
+    <div id="adContainer" class="desktop">
+      <!-- Desktop Banner Ad -->
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-3553125608385165"
+           data-ad-slot="7408348859"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>
+           (adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+    </div>
   </div>
 </div>
 
@@ -1037,6 +1113,20 @@
           New Scan
         </button>
       </div>
+    </div>
+
+    <!-- AD CONTAINER - MOBILE -->
+    <div id="adContainerMobile" class="mobile" style="margin-top: 20px;">
+      <!-- Mobile Banner Ad -->
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-3553125608385165"
+           data-ad-slot="7408348859"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>
+           (adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
     </div>
   </div>
 
