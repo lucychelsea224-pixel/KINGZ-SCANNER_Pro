@@ -1,10 +1,14 @@
 // Change the version number whenever you want to force a cache refresh
-const CACHE_NAME = 'docscan-cache-v1.1';
+const CACHE_NAME = 'docscan-cache-v1.2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './sw.js'
+  './sw.js',
+  './icon-192.png',
+  './icon-512.png',
+  './privacy-policy.html',
+  './terms-of-service.html'
 ];
 
 // Install event - cache assets
