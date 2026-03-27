@@ -1815,6 +1815,67 @@ function applySharpness(imgData, amount) {
   }
 }
 
+// ── PERSPECTIVE TRANSFORM (AUTO-STRAIGHTEN) ──
+
+/**
+ * Calculates the affine transformation matrix to map one triangle to another.
+ * Used for perspective correction.
+ * @param {object} s0 - Source triangle corner 1 {x, y}
+ * @param {object} s1 - Source triangle corner 2 {x, y}
+ * @param {object} s2 - Source triangle corner 3 {x, y}
+ * @param {object} d0 - Destination triangle corner 1 {x, y}
+ * @param {object} d1 - Destination triangle corner 2 {x, y}
+ * @param {object} d2 - Destination triangle corner 3 {x, y}
+ * @returns {object} A transform object for canvas context's setTransform.
+ */
+function getTriangleTransform(s0, s1, s2, d0, d1, d2) {
+    const det = s0.x * (s1.y - s2.y) + s1.x * (s2.y - s0.y) + s2.x * (s0.y - s1.y);
+    if (det === 0) return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+
+    const a = (d0.x * (s1.y - s2.y) + d1.x * (s2.y - s0.y) + d2.x * (s0.y - s1.y)) / det;
+    const b = (d0.x * (s2.x - s1.x) + d1.x * (s0.x - s2.x) + d2.x * (s1.x - s0.x)) / det;
+    const c = d0.x - a * s0.x - b * s0.y;
+
+    const d = (d0.y * (s1.y - s2.y) + d1.y * (s2.y - s0.y) + d2.y * (s0.y - s1.y)) / det;
+    const e = (d0.y * (s2.x - s1.x) + d1.y * (s0.x - s2.x) + d2.y * (s1.x - s0.x)) / det;
+    const f = d0.y - d * s0.x - e * s0.y;
+
+    return { a: a, b: d, c: b, d: e, e: c, f: f };
+}
+
+/**
+ * Draws a triangular piece of a source canvas onto a destination context,
+ * applying an affine transformation.
+ * @param {CanvasRenderingContext2D} destCtx - The destination context to draw on.
+ * @param {HTMLCanvasElement} sourceCanvas - The source canvas to pull image data from.
+ * @param {Array<object>} s_tri - Array of 3 source corner points.
+ * @param {Array<object>} d_tri - Array of 3 destination corner points.
+ */
+function drawTriangle(destCtx, sourceCanvas, s_tri, d_tri) {
+    destCtx.save();
+    destCtx.beginPath();
+    destCtx.moveTo(d_tri[0].x, d_tri[0].y);
+    destCtx.lineTo(d_tri[1].x, d_tri[1].y);
+    destCtx.lineTo(d_tri[2].x, d_tri[2].y);
+    destCtx.closePath();
+    destCtx.clip();
+
+    const t = getTriangleTransform(s_tri[0], s_tri[1], s_tri[2], d_tri[0], d_tri[1], d_tri[2]);
+    destCtx.setTransform(t.a, t.b, t.c, t.d, t.e, t.f);
+    destCtx.drawImage(sourceCanvas, 0, 0);
+    destCtx.restore();
+}
+
+function perspectiveTransform(sourceCanvas, corners, width, height) {
+    const destCanvas = document.createElement('canvas');
+    destCanvas.width = width; destCanvas.height = height;
+    const destCtx = destCanvas.getContext('2d');
+
+    const d0 = { x: 0, y: 0 }, d1 = { x: width, y: 0 }, d2 = { x: width, y: height }, d3 = { x: 0, y: height };
+    drawTriangle(destCtx, sourceCanvas, [corners.tl, corners.tr, corners.bl], [d0, d1, d3]);
+    drawTriangle(destCtx, sourceCanvas, [corners.tr, corners.br, corners.bl], [d1, d2, d3]);
+    return destCtx.getImageData(0, 0, width, height);
+}
 // ── CROP ──
 const A4_RATIO = 1 / Math.sqrt(2); // width/height for A4 (portrait)
 let dragState = null; // { type: 'corner'|'edge', key, origin, rect }
@@ -1863,15 +1924,15 @@ function setupCrop() {
   const cx = w / 2;
   const cy = h / 2;
   
-  cropRect = {
-    x: cx - fitW / 2,
-    y: cy - fitH / 2,
-    w: fitW,
-    h: fitH,
+  cropCorners = {
+    tl: { x: cx - fitW / 2, y: cy - fitH / 2 },
+    tr: { x: cx + fitW / 2, y: cy - fitH / 2 },
+    br: { x: cx + fitW / 2, y: cy + fitH / 2 },
+    bl: { x: cx - fitW / 2, y: cy + fitH / 2 },
   };
   
   // Ensure initial crop rect is within bounds
-  clampRect(cropRect);
+  // clampRect(cropRect); // Clamping is now done during drag
 
   if (!cropHandles || !cropHandles.children.length) createCropHandles();
   cropRectEl.style.display = 'block';
@@ -1902,29 +1963,11 @@ function createCropHandles() {
   if (!cropHandles) return;
   cropHandles.innerHTML = '';
   const corners = ['tl', 'tr', 'br', 'bl'];
-  const edges = ['top', 'right', 'bottom', 'left'];
 
   // Create corner handles with visual indicator
   corners.forEach(k => {
     const el = document.createElement('div');
     el.className = 'crop-handle corner';
-    el.dataset.type = 'corner';
-    el.dataset.key = k;
-    el.style.pointerEvents = 'auto';
-    
-    // Add inner visual indicator
-    const inner = document.createElement('div');
-    inner.style.cssText = 'width: 8px; height: 8px; background: #fff; border-radius: 1px; opacity: 0.7;';
-    el.appendChild(inner);
-    
-    cropHandles.appendChild(el);
-  });
-
-  // Create edge handles with visual indicators
-  edges.forEach(k => {
-    const el = document.createElement('div');
-    el.className = 'crop-handle edge';
-    el.dataset.type = 'edge';
     el.dataset.key = k;
     el.style.pointerEvents = 'auto';
     
@@ -1951,40 +1994,30 @@ function updateCropUI() {
   const scaleY = canvasRect.height / mainCanvas.height;
   const offsetX = canvasRect.left - overlayRect.left;
   const offsetY = canvasRect.top - overlayRect.top;
-
+  
   const toOverlay = (pt) => ({
     x: pt.x * scaleX + offsetX,
     y: pt.y * scaleY + offsetY,
   });
 
-  const rectOverlay = toOverlay({ x: cropRect.x, y: cropRect.y });
-  cropRectEl.style.left = rectOverlay.x + 'px';
-  cropRectEl.style.top = rectOverlay.y + 'px';
-  cropRectEl.style.width = cropRect.w * scaleX + 'px';
-  cropRectEl.style.height = cropRect.h * scaleY + 'px';
-
-  const mid = {
-    top: { x: cropRect.x + cropRect.w / 2, y: cropRect.y },
-    bottom: { x: cropRect.x + cropRect.w / 2, y: cropRect.y + cropRect.h },
-    left: { x: cropRect.x, y: cropRect.y + cropRect.h / 2 },
-    right: { x: cropRect.x + cropRect.w, y: cropRect.y + cropRect.h / 2 },
-  };
+  // Draw quad lines on the main canvas context for simplicity
+  const overlayCtx = cropOverlay.getContext('2d');
+  overlayCtx.clearRect(0, 0, cropOverlay.width, cropOverlay.height);
+  overlayCtx.strokeStyle = 'var(--accent)';
+  overlayCtx.lineWidth = 3 / scaleX; // Adjust line width for scale
+  overlayCtx.beginPath();
+  overlayCtx.moveTo(cropCorners.tl.x, cropCorners.tl.y);
+  overlayCtx.lineTo(cropCorners.tr.x, cropCorners.tr.y);
+  overlayCtx.lineTo(cropCorners.br.x, cropCorners.br.y);
+  overlayCtx.lineTo(cropCorners.bl.x, cropCorners.bl.y);
+  overlayCtx.closePath();
+  overlayCtx.stroke();
 
   Array.from(cropHandles.children).forEach(el => {
-    const type = el.dataset.type;
     const key = el.dataset.key;
-    let pt;
-
-    if (type === 'corner') {
-      if (key === 'tl') pt = { x: cropRect.x, y: cropRect.y };
-      if (key === 'tr') pt = { x: cropRect.x + cropRect.w, y: cropRect.y };
-      if (key === 'br') pt = { x: cropRect.x + cropRect.w, y: cropRect.y + cropRect.h };
-      if (key === 'bl') pt = { x: cropRect.x, y: cropRect.y + cropRect.h };
-    } else {
-      pt = mid[key];
-    }
-
+    const pt = cropCorners[key];
     if (!pt) return;
+
     const overlayPt = toOverlay(pt);
     el.style.left = `${overlayPt.x}px`;
     el.style.top = `${overlayPt.y}px`;
@@ -2002,15 +2035,12 @@ function getOverlayPoint(e) {
 function startCrop(e) {
   if (!cropActive) return;
   const target = e.target;
-  const type = target.dataset?.type;
   const key = target.dataset?.key;
-  if (!type || !key) return;
+  if (!key || !target.classList.contains('crop-handle')) return;
 
   dragState = {
-    type,
     key,
     origin: getOverlayPoint(e),
-    rect: { ...cropRect },
   };
   e.preventDefault();
 }
@@ -2018,53 +2048,13 @@ function startCrop(e) {
 function doCrop(e) {
   if (!dragState || !cropActive) return;
   const pt = getOverlayPoint(e);
-  const dx = pt.x - dragState.origin.x;
-  const dy = pt.y - dragState.origin.y;
-
-  const r = { ...dragState.rect };
   const w = mainCanvas.width;
   const h = mainCanvas.height;
 
-  if (dragState.type === 'corner') {
-    switch (dragState.key) {
-      case 'tl':
-        r.x += dx; r.y += dy; r.w -= dx; r.h -= dy;
-        break;
-      case 'tr':
-        r.y += dy; r.w += dx; r.h -= dy;
-        break;
-      case 'br':
-        r.w += dx; r.h += dy;
-        break;
-      case 'bl':
-        r.x += dx; r.w -= dx; r.h += dy;
-        break;
-    }
-  } else {
-    switch (dragState.key) {
-      case 'top':
-        r.y += dy; r.h -= dy;
-        break;
-      case 'bottom':
-        r.h += dy;
-        break;
-      case 'left':
-        r.x += dx; r.w -= dx;
-        break;
-      case 'right':
-        r.w += dx;
-        break;
-    }
-  }
+  // Move the dragged corner, clamping to image boundaries
+  cropCorners[dragState.key].x = Math.max(0, Math.min(w, pt.x));
+  cropCorners[dragState.key].y = Math.max(0, Math.min(h, pt.y));
 
-  // Allow free resizing without minimum size restriction
-  r.w = Math.max(1, r.w);
-  r.h = Math.max(1, r.h);
-
-  // Enforce image boundaries
-  clampRect(r);
-
-  cropRect = r;
   updateCropUI();
 }
 
@@ -2073,22 +2063,37 @@ function endCrop() {
 }
 
 function applyCrop() {
-  if (!originalImageData || cropRect.w <= 0 || cropRect.h <= 0) return;
+  if (!originalImageData || !cropCorners) return;
   history.push(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
 
-  const sx = Math.round(cropRect.x);
-  const sy = Math.round(cropRect.y);
-  const sw = Math.round(cropRect.w);
-  const sh = Math.round(cropRect.h);
+  // Calculate destination dimensions based on the longest sides of the quadrilateral
+  const topW = Math.hypot(cropCorners.tr.x - cropCorners.tl.x, cropCorners.tr.y - cropCorners.tl.y);
+  const botW = Math.hypot(cropCorners.br.x - cropCorners.bl.x, cropCorners.br.y - cropCorners.bl.y);
+  const destW = Math.round(Math.max(topW, botW));
 
-  hiddenCanvas.width = sw;
-  hiddenCanvas.height = sh;
-  hctx.drawImage(mainCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
-  originalImageData = hctx.getImageData(0, 0, sw, sh);
+  const leftH = Math.hypot(cropCorners.bl.x - cropCorners.tl.x, cropCorners.bl.y - cropCorners.tl.y);
+  const rightH = Math.hypot(cropCorners.br.x - cropCorners.tr.x, cropCorners.br.y - cropCorners.tr.y);
+  const destH = Math.round(Math.max(leftH, rightH));
+
+  if (destW < 1 || destH < 1) {
+    showToast('Invalid crop area');
+    return;
+  }
+
+  // Use the current canvas content (with effects) as the source
+  const sourceCanvas = document.createElement('canvas');
+  sourceCanvas.width = mainCanvas.width;
+  sourceCanvas.height = mainCanvas.height;
+  sourceCanvas.getContext('2d').drawImage(mainCanvas, 0, 0);
+
+  // Perform the perspective transform
+  const straightenedImageData = perspectiveTransform(sourceCanvas, cropCorners, destW, destH);
+
+  originalImageData = straightenedImageData;
   cancelCrop();
   showImage(originalImageData);
   document.getElementById('undoCropBtn').style.display = 'flex';
-  showToast('Cropped!');
+  showToast('Document straightened!');
 }
 
 // ── UNDO CROP ──
@@ -2106,10 +2111,10 @@ function openManualCrop() {
   if (!originalImageData) return;
   const imgW = originalImageData.width;
   const imgH = originalImageData.height;
-  const x = cropRect.w > 0 ? cropRect.x : 0;
-  const y = cropRect.h > 0 ? cropRect.y : 0;
-  const w = cropRect.w > 0 ? cropRect.w : imgW;
-  const h = cropRect.h > 0 ? cropRect.h : imgH;
+  const x = cropCorners ? cropCorners.tl.x : 0;
+  const y = cropCorners ? cropCorners.tl.y : 0;
+  const w = cropCorners ? cropCorners.tr.x - cropCorners.tl.x : imgW;
+  const h = cropCorners ? cropCorners.bl.y - cropCorners.tl.y : imgH;
   document.getElementById('cropX').value = Math.round(x);
   document.getElementById('cropY').value = Math.round(y);
   document.getElementById('cropW').value = Math.round(w);
@@ -2132,7 +2137,12 @@ function applyManualCrop() {
   const clampedW = Math.max(1, Math.min(w, imgW - clampedX));
   const clampedH = Math.max(1, Math.min(h, imgH - clampedY));
 
-  cropRect = { x: clampedX, y: clampedY, w: clampedW, h: clampedH };
+  cropCorners = {
+    tl: { x: clampedX, y: clampedY },
+    tr: { x: clampedX + clampedW, y: clampedY },
+    br: { x: clampedX + clampedW, y: clampedY + clampedH },
+    bl: { x: clampedX, y: clampedY + clampedH },
+  };
   cropActive = true;
   cropOverlay.classList.add('active');
   document.getElementById('cropBtn').style.display = 'none';
@@ -2745,6 +2755,7 @@ let mobileCropDragging = false;
 let mobileCropDragHandle = null;
 let mobileCropStartX = 0;
 let mobileCropStartY = 0;
+let mobileCropCorners = null;
 
 function enableMobileCrop() {
   if (!mobileOriginalImageData && !mobileCurrentImageData) return;
@@ -2760,12 +2771,13 @@ function enableMobileCrop() {
   const h = imgData.height;
   const cropW = w * 0.8;
   const cropH = h * 0.8;
-  mobileCropRect = {
-    x: (w - cropW) / 2,
-    y: (h - cropH) / 2,
-    w: cropW,
-    h: cropH
+  mobileCropCorners = {
+    tl: { x: (w - cropW) / 2, y: (h - cropH) / 2 },
+    tr: { x: (w + cropW) / 2, y: (h - cropH) / 2 },
+    br: { x: (w + cropW) / 2, y: (h + cropH) / 2 },
+    bl: { x: (w - cropW) / 2, y: (h + cropH) / 2 },
   };
+
 
   // Get the display scale factor (CSS scaling)
   const maxW = preview.clientWidth - 2;
@@ -2823,70 +2835,32 @@ function drawMobileCropOverlay() {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
   // Draw semi-transparent overlay outside crop area
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-
-  // Crop coordinates are in image space, which matches canvas internal dimensions
-  const cropX = mobileCropRect.x;
-  const cropY = mobileCropRect.y;
-  const cropW = mobileCropRect.w;
-  const cropH = mobileCropRect.h;
-
-  // Fill four corners (outside crop area)
-  ctx.fillRect(0, 0, canvasWidth, cropY);
-  ctx.fillRect(0, cropY + cropH, canvasWidth, canvasHeight - cropY - cropH);
-  ctx.fillRect(0, cropY, cropX, cropH);
-  ctx.fillRect(cropX + cropW, cropY, canvasWidth - cropX - cropW, cropH);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
   // Draw crop rectangle border
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(mobileCropCorners.tl.x, mobileCropCorners.tl.y);
+  ctx.lineTo(mobileCropCorners.tr.x, mobileCropCorners.tr.y);
+  ctx.lineTo(mobileCropCorners.br.x, mobileCropCorners.br.y);
+  ctx.lineTo(mobileCropCorners.bl.x, mobileCropCorners.bl.y);
+  ctx.closePath();
   ctx.strokeStyle = '#e8ff47';
   ctx.lineWidth = 3;
-  ctx.strokeRect(cropX, cropY, cropW, cropH);
+  ctx.stroke();
 
-  // Draw corner handles (28px squares)
-  const cornerSize = 28;
+  // Clear the inside of the crop area
+  ctx.clip();
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  ctx.restore();
+
+  // Draw corner handles
+  const cornerSize = 30;
   ctx.fillStyle = '#e8ff47';
-  ctx.shadowColor = 'rgba(0,0,0,0.5)';
-  ctx.shadowBlur = 4;
-
-  const corners = [
-    { x: cropX - cornerSize/2, y: cropY - cornerSize/2 },
-    { x: cropX + cropW - cornerSize/2, y: cropY - cornerSize/2 },
-    { x: cropX - cornerSize/2, y: cropY + cropH - cornerSize/2 },
-    { x: cropX + cropW - cornerSize/2, y: cropY + cropH - cornerSize/2 }
-  ];
-  corners.forEach(h => {
-    ctx.fillRect(h.x, h.y, cornerSize, cornerSize);
-  });
-
-  // Draw edge handles (rectangles: 32px wide × 12px tall for horizontal, 12px wide × 32px tall for vertical)
-  ctx.fillStyle = '#ffb800';
-  const edgeHandles = [
-    { x: cropX + cropW/2 - 16, y: cropY - 6, w: 32, h: 12 }, // top
-    { x: cropX + cropW/2 - 16, y: cropY + cropH - 6, w: 32, h: 12 }, // bottom
-    { x: cropX - 6, y: cropY + cropH/2 - 16, w: 12, h: 32 }, // left
-    { x: cropX + cropW - 6, y: cropY + cropH/2 - 16, w: 12, h: 32 }  // right
-  ];
-  edgeHandles.forEach(h => {
-    ctx.fillRect(h.x, h.y, h.w, h.h);
-  });
-
-  // Draw dimension text
-  const width = Math.round(mobileCropRect.w);
-  const height = Math.round(mobileCropRect.h);
-  const dimensionText = `${width}×${height}px`;
-
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  ctx.font = 'bold 14px sans-serif';
-  const textMetrics = ctx.measureText(dimensionText);
-  const textX = cropX + cropW/2 - textMetrics.width/2;
-  const textY = cropY - 15;
-
-  // Draw semi-transparent background for text
-  ctx.fillRect(textX - 8, textY - 16, textMetrics.width + 16, 20);
-  ctx.fillStyle = '#e8ff47';
-  ctx.fillText(dimensionText, textX, textY);
-
-  ctx.shadowColor = 'rgba(0,0,0,0)';
+  for (const key in mobileCropCorners) {
+    ctx.fillRect(mobileCropCorners[key].x - cornerSize / 2, mobileCropCorners[key].y - cornerSize / 2, cornerSize, cornerSize);
+  }
 }
 
 function getCropHandleAtPoint(px, py) {
@@ -2908,26 +2882,14 @@ function getCropHandleAtPoint(px, py) {
   const imageX = px * scaleX;
   const imageY = py * scaleY;
 
-  const cropX = mobileCropRect.x;
-  const cropY = mobileCropRect.y;
-  const cropW = mobileCropRect.w;
-  const cropH = mobileCropRect.h;
-  const threshold = Math.max(40 * scaleX, 20); // Scale threshold appropriately
+  const threshold = Math.max(50 * scaleX, 30); // Generous touch area
 
-  // Check corners first (higher priority)
-  if (Math.abs(imageX - cropX) < threshold && Math.abs(imageY - cropY) < threshold) return 'tl';
-  if (Math.abs(imageX - (cropX + cropW)) < threshold && Math.abs(imageY - cropY) < threshold) return 'tr';
-  if (Math.abs(imageX - cropX) < threshold && Math.abs(imageY - (cropY + cropH)) < threshold) return 'bl';
-  if (Math.abs(imageX - (cropX + cropW)) < threshold && Math.abs(imageY - (cropY + cropH)) < threshold) return 'br';
-
-  // Check edges (top, bottom, left, right)
-  if (Math.abs(imageY - cropY) < threshold && imageX > cropX + threshold && imageX < cropX + cropW - threshold) return 'top';
-  if (Math.abs(imageY - (cropY + cropH)) < threshold && imageX > cropX + threshold && imageX < cropX + cropW - threshold) return 'bottom';
-  if (Math.abs(imageX - cropX) < threshold && imageY > cropY + threshold && imageY < cropY + cropH - threshold) return 'left';
-  if (Math.abs(imageX - (cropX + cropW)) < threshold && imageY > cropY + threshold && imageY < cropY + cropH - threshold) return 'right';
-
-  // Check if inside crop area for move
-  if (imageX > cropX && imageX < cropX + cropW && imageY > cropY && imageY < cropY + cropH) return 'move';
+  for (const key in mobileCropCorners) {
+    const corner = mobileCropCorners[key];
+    if (Math.hypot(imageX - corner.x, imageY - corner.y) < threshold) {
+      return key;
+    }
+  }
 
   return null;
 }
@@ -3004,61 +2966,10 @@ function updateCropRect(x, y) {
   const startImageX = mobileCropStartX * scaleX;
   const startImageY = mobileCropStartY * scaleY;
 
-  const deltaImgX = imageX - startImageX;
-  const deltaImgY = imageY - startImageY;
-
   const maxX = imgData.width, maxY = imgData.height;
 
-  if (mobileCropDragHandle === 'move') {
-    mobileCropRect.x = Math.max(0, Math.min(mobileCropRect.x + deltaImgX, maxX - mobileCropRect.w));
-    mobileCropRect.y = Math.max(0, Math.min(mobileCropRect.y + deltaImgY, maxY - mobileCropRect.h));
-  } else if (mobileCropDragHandle === 'tl') {
-    // Top-left: resize freely without minimum size
-    const newW = Math.max(1, mobileCropRect.w - deltaImgX);
-    const newH = Math.max(1, mobileCropRect.h - deltaImgY);
-    mobileCropRect.x = Math.max(0, Math.min(mobileCropRect.x + deltaImgX, maxX - newW));
-    mobileCropRect.y = Math.max(0, Math.min(mobileCropRect.y + deltaImgY, maxY - newH));
-    mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
-    mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
-  } else if (mobileCropDragHandle === 'tr') {
-    // Top-right: resize freely without minimum size
-    const newW = Math.max(1, mobileCropRect.w + deltaImgX);
-    const newH = Math.max(1, mobileCropRect.h - deltaImgY);
-    mobileCropRect.y = Math.max(0, Math.min(mobileCropRect.y + deltaImgY, maxY - newH));
-    mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
-    mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
-  } else if (mobileCropDragHandle === 'bl') {
-    // Bottom-left: resize freely without minimum size
-    const newW = Math.max(1, mobileCropRect.w - deltaImgX);
-    const newH = Math.max(1, mobileCropRect.h + deltaImgY);
-    mobileCropRect.x = Math.max(0, Math.min(mobileCropRect.x + deltaImgX, maxX - newW));
-    mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
-    mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
-  } else if (mobileCropDragHandle === 'br') {
-    // Bottom-right: resize freely without minimum size
-    const newW = Math.max(1, mobileCropRect.w + deltaImgX);
-    const newH = Math.max(1, mobileCropRect.h + deltaImgY);
-    mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
-    mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
-  } else if (mobileCropDragHandle === 'top') {
-    // Top edge: resize freely without minimum size
-    const newH = Math.max(1, mobileCropRect.h - deltaImgY);
-    mobileCropRect.y = Math.max(0, Math.min(mobileCropRect.y + deltaImgY, maxY - newH));
-    mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
-  } else if (mobileCropDragHandle === 'bottom') {
-    // Bottom edge: resize freely without minimum size
-    const newH = Math.max(1, mobileCropRect.h + deltaImgY);
-    mobileCropRect.h = Math.min(newH, maxY - mobileCropRect.y);
-  } else if (mobileCropDragHandle === 'left') {
-    // Left edge: resize freely without minimum size
-    const newW = Math.max(1, mobileCropRect.w - deltaImgX);
-    mobileCropRect.x = Math.max(0, Math.min(mobileCropRect.x + deltaImgX, maxX - newW));
-    mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
-  } else if (mobileCropDragHandle === 'right') {
-    // Right edge: resize freely without minimum size
-    const newW = Math.max(1, mobileCropRect.w + deltaImgX);
-    mobileCropRect.w = Math.min(newW, maxX - mobileCropRect.x);
-  }
+  mobileCropCorners[mobileCropDragHandle].x = Math.max(0, Math.min(imageX, maxX));
+  mobileCropCorners[mobileCropDragHandle].y = Math.max(0, Math.min(imageY, maxY));
 
   // Store position in display space for next drag iteration
   mobileCropStartX = x;
@@ -3077,7 +2988,7 @@ function handleMobileCropTouchEnd() {
 function cancelMobileCrop() {
   const overlay = document.getElementById('mobileCropOverlay');
   mobileCropActive = false;
-  mobileCropRect = { x: 0, y: 0, w: 0, h: 0 };
+  mobileCropCorners = null;
   mobileCropDragging = false;
   mobileCropDragHandle = null;
   
@@ -3096,26 +3007,38 @@ function cancelMobileCrop() {
 }
 
 function applyMobileCrop() {
-  if (!mobileOriginalImageData || mobileCropRect.w <= 0 || mobileCropRect.h <= 0) {
+  if (!mobileOriginalImageData || !mobileCropCorners) {
     showToast('Invalid crop area');
     return;
   }
   
-  const sx = Math.round(mobileCropRect.x);
-  const sy = Math.round(mobileCropRect.y);
-  const sw = Math.round(mobileCropRect.w);
-  const sh = Math.round(mobileCropRect.h);
-  
-  // Create new canvas and crop from the canvas display (which may have effects applied)
+  // Calculate destination dimensions
+  const topW = Math.hypot(mobileCropCorners.tr.x - mobileCropCorners.tl.x, mobileCropCorners.tr.y - mobileCropCorners.tl.y);
+  const botW = Math.hypot(mobileCropCorners.br.x - mobileCropCorners.bl.x, mobileCropCorners.br.y - mobileCropCorners.bl.y);
+  const destW = Math.round(Math.max(topW, botW));
+
+  const leftH = Math.hypot(mobileCropCorners.bl.x - mobileCropCorners.tl.x, mobileCropCorners.bl.y - mobileCropCorners.tl.y);
+  const rightH = Math.hypot(mobileCropCorners.br.x - mobileCropCorners.tr.x, mobileCropCorners.br.y - mobileCropCorners.tr.y);
+  const destH = Math.round(Math.max(leftH, rightH));
+
+  if (destW < 1 || destH < 1) {
+    showToast('Invalid crop area');
+    return;
+  }
+
+  // Use the current canvas content (with effects) as the source
   const srcCanvas = document.getElementById('mobileEditCanvas');
   const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = sw;
-  tempCanvas.height = sh;
+  tempCanvas.width = srcCanvas.width;
+  tempCanvas.height = srcCanvas.height;
   const tempCtx = tempCanvas.getContext('2d');
-  tempCtx.drawImage(srcCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+  tempCtx.drawImage(srcCanvas, 0, 0);
+
+  // Perform the perspective transform
+  const straightenedImageData = perspectiveTransform(tempCanvas, mobileCropCorners, destW, destH);
   
   // Update both image data objects
-  mobileOriginalImageData = tempCtx.getImageData(0, 0, sw, sh);
+  mobileOriginalImageData = straightenedImageData;
   mobileCurrentImageData = new ImageData(new Uint8ClampedArray(mobileOriginalImageData.data), mobileOriginalImageData.width, mobileOriginalImageData.height);
   
   // Reset adjustments since we're working with new cropped image
@@ -3126,7 +3049,7 @@ function applyMobileCrop() {
   
   cancelMobileCrop();
   updateMobileEditPreview();
-  showToast('Cropped!');
+  showToast('Document straightened!');
 }
 
 // ── MOBILE ADD PAGE (FROM SCAN SECTION) ──
