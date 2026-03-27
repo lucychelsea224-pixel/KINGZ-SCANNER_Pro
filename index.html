@@ -2450,7 +2450,8 @@ window.addEventListener('appinstalled', () => {
 // Handle Service Worker updates
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    showToast('App updated! Please refresh.');
+    // Automatically reload the page when a new service worker takes over
+    window.location.reload();
   });
 }
 

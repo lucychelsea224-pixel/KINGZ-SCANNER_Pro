@@ -1,4 +1,5 @@
-const CACHE_NAME = 'docscan-cache-v1';
+// Change the version number whenever you want to force a cache refresh
+const CACHE_NAME = 'docscan-cache-v1.1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -57,6 +58,11 @@ self.addEventListener('fetch', e => {
       .then(response => {
         // Clone response and cache it
         const responseClone = response.clone();
+        
+        // Don't cache if not a successful response
+        if(!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
         caches.open(CACHE_NAME).then(cache => {
           cache.put(request, responseClone);
         });
