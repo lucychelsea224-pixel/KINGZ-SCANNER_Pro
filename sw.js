@@ -1,4 +1,18 @@
 // Change the version number whenever you want to force a cache refresh
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 const CACHE_NAME = 'docscan-cache-v1.3';
 const ASSETS_TO_CACHE = [
   './',
