@@ -1,5 +1,5 @@
 // Change the version number whenever you want to force a cache refresh
-const CACHE_NAME = 'docscan-cache-v1.2';
+const CACHE_NAME = 'docscan-cache-v1.3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
