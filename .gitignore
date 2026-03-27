@@ -51,3 +51,9 @@ coverage/
 
 # Local development
 local.toml
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
