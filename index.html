@@ -9,8 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="KINGZSCANPRO">
 <meta name="description" content="Advanced document scanning and enhancement app">
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3553125608385165"
-     crossorigin="anonymous"></script>
+<script src="https://pl29003344.profitablecpmratenetwork.com/25/06/ef/2506ef37f4de33fd3b7d8c0ebc8d4dbb.js"></script>
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
@@ -221,12 +220,6 @@
     z-index: 2;
   }
   #cropOverlay.active { display: block; }
-  #cropRect {
-    position: absolute; border: 3px solid var(--accent);
-    background: rgba(232,255,71,0.06);
-    pointer-events: none;
-    box-shadow: 0 0 0 4px rgba(232,255,71,0.15);
-  }
   .crop-handle {
     position: absolute; background: #87ceeb; border-radius: 4px;
     transform: translate(-50%, -50%);
@@ -286,47 +279,6 @@
     font-size: 0.7rem; font-weight: 700; letter-spacing: 1.5px;
     text-transform: uppercase; color: var(--muted);
     margin-bottom: 14px; font-family: 'DM Mono', monospace;
-  }
-
-  /* ── AD CONTAINER ── */
-  #adContainer {
-    padding: 16px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    margin: 16px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 280px;
-  }
-
-  #adContainer .adsbygoogle {
-    display: block !important;
-  }
-
-  #adContainer.desktop {
-    display: flex;
-  }
-
-  #adContainer.mobile {
-    display: none;
-  }
-
-  /* Mobile Ad Container */
-  #adContainerMobile {
-    padding: 12px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 200px;
-  }
-
-  #adContainerMobile .adsbygoogle {
-    display: block !important;
   }
 
   /* ── EFFECTS GRID ── */
@@ -685,27 +637,6 @@
       flex-direction: column;
       padding: 8px;
     }
-
-    #adContainer {
-      display: flex;
-      min-height: 250px;
-      margin: 12px;
-      padding: 12px;
-    }
-
-    #adContainer.desktop {
-      display: none;
-    }
-
-    #adContainer.mobile {
-      display: flex;
-    }
-
-    #adContainerMobile {
-      min-height: 250px;
-      margin: 0 12px 12px;
-      padding: 12px;
-    }
   }
 
   /* Mobile touch optimizations */
@@ -828,10 +759,8 @@
       <!-- Canvas preview -->
       <div id="canvasWrap">
         <canvas id="mainCanvas"></canvas>
-        <div id="cropOverlay" onpointerdown="startCrop(event)" onpointermove="doCrop(event)" onpointerup="endCrop(event)" onpointercancel="endCrop(event)">
-          <div id="cropRect"></div>
-          <div id="cropHandles" style="position:absolute; inset:0; pointer-events:auto;"></div>
-        </div>
+        <canvas id="cropOverlay" onpointerdown="startCrop(event)" onpointermove="doCrop(event)" onpointerup="endCrop(event)" onpointercancel="endCrop(event)"></canvas>
+        <div id="cropHandles" style="position:absolute; inset:0; pointer-events:none;"></div>
       </div>
 
       <canvas id="hiddenCanvas"></canvas>
@@ -915,8 +844,11 @@
 
     <!-- ADJUSTMENTS -->
     <div class="sidebar-section">
-      <h4>Adjustments</h4>
-      <div class="slider-group">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h4>Adjustments</h4>
+        <button class="btn btn-secondary" id="toggleAdjustmentsBtn" onclick="toggleAdjustments()">Edit</button>
+      </div>
+      <div class="slider-group" id="adjustmentsSliders" style="display:none;">
         <div class="slider-row">
           <label>Brightness</label>
           <input type="range" id="brightness" min="-100" max="100" value="0" oninput="applyAdjustments()">
@@ -985,19 +917,6 @@
       </div>
     </div>
 
-    <!-- AD CONTAINER - DESKTOP -->
-    <div id="adContainer" class="desktop">
-      <!-- Desktop Banner Ad -->
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-3553125608385165"
-           data-ad-slot="7408348859"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-      <script>
-           (adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
-    </div>
   </div>
 </div>
 
@@ -1204,19 +1123,6 @@
       </div>
     </div>
 
-    <!-- AD CONTAINER - MOBILE -->
-    <div id="adContainerMobile" class="mobile" style="margin-top: 20px;">
-      <!-- Mobile Banner Ad -->
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-3553125608385165"
-           data-ad-slot="7408348859"
-           data-ad-format="auto"
-           data-full-width-responsive="true"></ins>
-      <script>
-           (adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
-    </div>
   </div>
 
   <!-- BOTTOM NAVIGATION -->
@@ -1907,6 +1813,11 @@ function syncCropOverlay() {
   cropOverlay.style.height = canvasRect.height + 'px';
   cropOverlay.style.left = (canvasRect.left - wrapRect.left) + 'px';
   cropOverlay.style.top = (canvasRect.top - wrapRect.top) + 'px';
+
+  if (cropOverlay.width !== mainCanvas.width || cropOverlay.height !== mainCanvas.height) {
+    cropOverlay.width = mainCanvas.width;
+    cropOverlay.height = mainCanvas.height;
+  }
 }
 
 window.addEventListener('resize', () => {
@@ -1935,7 +1846,6 @@ function setupCrop() {
   // clampRect(cropRect); // Clamping is now done during drag
 
   if (!cropHandles || !cropHandles.children.length) createCropHandles();
-  cropRectEl.style.display = 'block';
   updateCropUI();
 }
 
@@ -1952,7 +1862,6 @@ function enableCrop() {
 function cancelCrop() {
   cropActive = false;
   cropOverlay.classList.remove('active');
-  cropRectEl.style.display = 'none';
   document.getElementById('cropBtn').style.display = 'flex';
   document.getElementById('applyCropBtn').style.display = 'none';
   document.getElementById('cancelCropBtn').style.display = 'none';
@@ -1985,33 +1894,42 @@ function createCropHandles() {
 }
 
 function updateCropUI() {
-  // Ensure overlay matches the canvas display size / position
   syncCropOverlay();
 
   const canvasRect = mainCanvas.getBoundingClientRect();
   const overlayRect = cropOverlay.getBoundingClientRect();
   const scaleX = canvasRect.width / mainCanvas.width;
-  const scaleY = canvasRect.height / mainCanvas.height;
   const offsetX = canvasRect.left - overlayRect.left;
   const offsetY = canvasRect.top - overlayRect.top;
   
   const toOverlay = (pt) => ({
     x: pt.x * scaleX + offsetX,
-    y: pt.y * scaleY + offsetY,
+    y: pt.y * scaleX + offsetY,
   });
 
-  // Draw quad lines on the main canvas context for simplicity
   const overlayCtx = cropOverlay.getContext('2d');
-  overlayCtx.clearRect(0, 0, cropOverlay.width, cropOverlay.height);
-  overlayCtx.strokeStyle = 'var(--accent)';
-  overlayCtx.lineWidth = 3 / scaleX; // Adjust line width for scale
+  const w = cropOverlay.width;
+  const h = cropOverlay.height;
+  overlayCtx.clearRect(0, 0, w, h);
+
+  overlayCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  overlayCtx.fillRect(0, 0, w, h);
+
+  overlayCtx.save();
   overlayCtx.beginPath();
   overlayCtx.moveTo(cropCorners.tl.x, cropCorners.tl.y);
   overlayCtx.lineTo(cropCorners.tr.x, cropCorners.tr.y);
   overlayCtx.lineTo(cropCorners.br.x, cropCorners.br.y);
   overlayCtx.lineTo(cropCorners.bl.x, cropCorners.bl.y);
   overlayCtx.closePath();
+  
+  overlayCtx.strokeStyle = 'var(--accent)';
+  overlayCtx.lineWidth = 2;
   overlayCtx.stroke();
+
+  overlayCtx.clip();
+  overlayCtx.clearRect(0, 0, w, h);
+  overlayCtx.restore();
 
   Array.from(cropHandles.children).forEach(el => {
     const key = el.dataset.key;
@@ -2091,6 +2009,21 @@ function applyCrop() {
 
   originalImageData = straightenedImageData;
   cancelCrop();
+
+  // Reset adjustments since they are now baked into the image
+  document.getElementById('brightness').value = 0;
+  document.getElementById('contrast').value = 0;
+  document.getElementById('sharpness').value = 0;
+  document.getElementById('saturation').value = 0;
+  document.getElementById('brightnessVal').textContent = '0';
+  document.getElementById('contrastVal').textContent = '0';
+  document.getElementById('sharpnessVal').textContent = '0';
+  document.getElementById('saturationVal').textContent = '0';
+  currentEffect = 'original';
+  document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
+  const originalEffectBtn = document.getElementById('eff_original');
+  if(originalEffectBtn) originalEffectBtn.classList.add('active');
+
   showImage(originalImageData);
   document.getElementById('undoCropBtn').style.display = 'flex';
   showToast('Document straightened!');
@@ -2100,6 +2033,21 @@ function applyCrop() {
 function undoCrop() {
   if (history.length > 0) {
     originalImageData = history.pop();
+
+    // Also reset adjustments, since we are reverting to a pre-crop state
+    document.getElementById('brightness').value = 0;
+    document.getElementById('contrast').value = 0;
+    document.getElementById('sharpness').value = 0;
+    document.getElementById('saturation').value = 0;
+    document.getElementById('brightnessVal').textContent = '0';
+    document.getElementById('contrastVal').textContent = '0';
+    document.getElementById('sharpnessVal').textContent = '0';
+    document.getElementById('saturationVal').textContent = '0';
+    currentEffect = 'original';
+    document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
+    const originalEffectBtn = document.getElementById('eff_original');
+    if(originalEffectBtn) originalEffectBtn.classList.add('active');
+
     showImage(originalImageData);
     document.getElementById('undoCropBtn').style.display = history.length > 0 ? 'flex' : 'none';
     showToast('Crop undone!');
@@ -2527,6 +2475,18 @@ function promptInstall() {
     deferredPrompt = null;
     hideInstallButton();
   });
+}
+
+function toggleAdjustments() {
+  const sliders = document.getElementById('adjustmentsSliders');
+  const btn = document.getElementById('toggleAdjustmentsBtn');
+  if (sliders.style.display === 'none') {
+    sliders.style.display = 'flex';
+    btn.textContent = 'Done';
+  } else {
+    sliders.style.display = 'none';
+    btn.textContent = 'Edit';
+  }
 }
 
 // ── MOBILE FUNCTIONS ──
