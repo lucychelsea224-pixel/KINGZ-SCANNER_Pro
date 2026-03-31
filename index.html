@@ -372,6 +372,25 @@
   }
   #toast.show { transform: translateX(-50%) translateY(0); }
 
+  /* ── AD CONTAINER ── */
+  .ad-container {
+    margin: 16px;
+    padding: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    justify-content: center;
+    align-items: center;
+    min-height: 84px; /* 60px ad height + padding */
+    overflow: hidden;
+  }
+  .desktop-ad {
+    display: flex;
+  }
+  .mobile-ad {
+    display: none;
+  }
+
   /* ── AUTO-CAPTURE TOGGLE ── */
   .auto-capture-panel {
     display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
@@ -587,6 +606,12 @@
       flex: 0 0 auto;
       margin-bottom: 12px;
     }
+
+    .ad-container {
+      margin: 12px;
+    }
+    .desktop-ad { display: none; }
+    .mobile-ad { display: flex; }
 
     .mobile-effects-grid {
       display: grid;
@@ -917,6 +942,20 @@
       </div>
     </div>
 
+    <!-- AD CONTAINER - DESKTOP -->
+    <div class="ad-container desktop-ad">
+      <script>
+        atOptions = {
+          'key' : '56e98d5854b867eefa4b4d2012896a2a',
+          'format' : 'iframe',
+          'height' : 60,
+          'width' : 468,
+          'params' : {}
+        };
+      </script>
+      <script src="https://www.highperformanceformat.com/56e98d5854b4d2012896a2a/invoke.js"></script>
+    </div>
+
   </div>
 </div>
 
@@ -1121,6 +1160,20 @@
           New Scan
         </button>
       </div>
+    </div>
+
+    <!-- AD CONTAINER - MOBILE -->
+    <div class="ad-container mobile-ad">
+      <script>
+        atOptions = {
+          'key' : '56e98d5854b867eefa4b4d2012896a2a',
+          'format' : 'iframe',
+          'height' : 60,
+          'width' : 468,
+          'params' : {}
+        };
+      </script>
+      <script src="https://www.highperformanceformat.com/56e98d5854b867eefa4b4d2012896a2a/invoke.js"></script>
     </div>
 
   </div>
