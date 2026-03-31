@@ -1,12 +1,15 @@
-// Change the version number whenever you want to force a cache refresh
-const CACHE_NAME = 'docscan-cache-v1.5';
+// IMPORTANT: Increment this version number whenever you deploy updates.
+// This will trigger the service worker to update and fetch new files.
+const CACHE_NAME = 'docscan-cache-v1.6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
   './sw.js',
+  './jspdf.umd.min.js', // Cache the local PDF library
   './icon-192.png',
   './icon-512.png',
+  './favicon.ico',
   './privacy-policy.html',
   './terms-of-service.html'
 ];

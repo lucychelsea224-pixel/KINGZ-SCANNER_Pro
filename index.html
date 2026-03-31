@@ -9,11 +9,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="KINGZSCANPRO">
 <meta name="description" content="Advanced document scanning and enhancement app">
-<script src="https://pl29003344.profitablecpmratenetwork.com/25/06/ef/2506ef37f4de33fd3b7d8c0ebc8d4dbb.js"></script>
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
 <title>KingzScan Pro</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
@@ -372,25 +372,6 @@
   }
   #toast.show { transform: translateX(-50%) translateY(0); }
 
-  /* ── AD CONTAINER ── */
-  .ad-container {
-    margin: 16px;
-    padding: 12px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    justify-content: center;
-    align-items: center;
-    min-height: 84px; /* 60px ad height + padding */
-    overflow: hidden;
-  }
-  .desktop-ad {
-    display: flex;
-  }
-  .mobile-ad {
-    display: none;
-  }
-
   /* ── AUTO-CAPTURE TOGGLE ── */
   .auto-capture-panel {
     display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
@@ -606,12 +587,6 @@
       flex: 0 0 auto;
       margin-bottom: 12px;
     }
-
-    .ad-container {
-      margin: 12px;
-    }
-    .desktop-ad { display: none; }
-    .mobile-ad { display: flex; }
 
     .mobile-effects-grid {
       display: grid;
@@ -942,20 +917,6 @@
       </div>
     </div>
 
-    <!-- AD CONTAINER - DESKTOP -->
-    <div class="ad-container desktop-ad">
-      <script>
-        atOptions = {
-          'key' : '56e98d5854b867eefa4b4d2012896a2a',
-          'format' : 'iframe',
-          'height' : 60,
-          'width' : 468,
-          'params' : {}
-        };
-      </script>
-      <script src="https://www.highperformanceformat.com/56e98d5854b4d2012896a2a/invoke.js"></script>
-    </div>
-
   </div>
 </div>
 
@@ -1162,20 +1123,6 @@
       </div>
     </div>
 
-    <!-- AD CONTAINER - MOBILE -->
-    <div class="ad-container mobile-ad">
-      <script>
-        atOptions = {
-          'key' : '56e98d5854b867eefa4b4d2012896a2a',
-          'format' : 'iframe',
-          'height' : 60,
-          'width' : 468,
-          'params' : {}
-        };
-      </script>
-      <script src="https://www.highperformanceformat.com/56e98d5854b867eefa4b4d2012896a2a/invoke.js"></script>
-    </div>
-
   </div>
 
   <!-- BOTTOM NAVIGATION -->
@@ -1239,8 +1186,8 @@
   </div>
 </div>
 
-<!-- Load jsPDF for PDF export -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-6I0Jx0P2fGZ3dYbXbQpmimc6vxO/a8ZCTCJ1N32WhjQ6UJU8lWOyTZ+J2c52Z8Yt0UibtKpGHu7uThTs01o9x4A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- Please download jspdf.umd.min.js v2.5.1 from a CDN (like cdnjs) and place it in your project's root directory -->
+<script src="./jspdf.umd.min.js"></script>
 
 <script>
 // ── STATE ──
