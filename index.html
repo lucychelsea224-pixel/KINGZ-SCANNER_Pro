@@ -580,9 +580,9 @@
     
     .mobile-ad {
       display: flex;
-      min-height: 324px; /* 300px ad + 2*12px padding */
-      margin-top: 16px; /* Add some space above the ad */
-      margin-bottom: 16px; /* Add some space below the ad */
+      min-height: 170px; /* 160px ad + 2*5px padding */
+      padding: 5px; /* Reduced padding for smaller ad */
+      margin-top: 20px; /* Add space above the ad container */
       flex-direction: column; /* Allow content inside to stack */
       gap: 8px; /* Space for the label */
     }
@@ -1123,12 +1123,6 @@
         </button>
       </div>
 
-      <!-- AD CONTAINER - MOBILE -->
-      <div id="mobileAdContainer" class="ad-container mobile-ad">
-        <span style="font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;">Advertisement</span>
-        <!-- Ads will be loaded here by JavaScript -->
-      </div>
-
       <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px; color:var(--text); margin-top:12px;">Pages</div>
       <div class="pages-list" id="mobilePagesList">
         <div class="no-doc" style="grid-column: 1/-1;">
@@ -1155,6 +1149,12 @@
           New Scan
         </button>
       </div>
+    </div>
+
+    <!-- AD CONTAINER - MOBILE -->
+    <div id="mobileAdContainer" class="ad-container mobile-ad">
+      <span style="font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;">Advertisement</span>
+      <!-- Ads will be loaded here by JavaScript -->
     </div>
 
   </div>
