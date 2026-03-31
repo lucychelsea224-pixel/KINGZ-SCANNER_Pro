@@ -581,6 +581,10 @@
     .mobile-ad {
       display: flex;
       min-height: 324px; /* 300px ad + 2*12px padding */
+      margin-top: 16px; /* Add some space above the ad */
+      margin-bottom: 16px; /* Add some space below the ad */
+      flex-direction: column; /* Allow content inside to stack */
+      gap: 8px; /* Space for the label */
     }
     
     .main-area {
@@ -1093,12 +1097,7 @@
       <div class="section-title">💾 Export Document</div>
       <div class="section-subtitle">Download your scanned document in your preferred format</div>
 
-      <!-- AD CONTAINER - MOBILE -->
-      <div id="mobileAdContainer" class="ad-container mobile-ad">
-        <!-- Ads will be loaded here by JavaScript -->
-      </div>
-
-      <div id="mobileExportPreview" style="border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); min-height: 200px; overflow: auto; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; padding: 12px;">
+      <div id="mobileExportPreview" style="border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); min-height: 60vh; max-height: 70vh;">
         <canvas id="mobileExportCanvas" style="max-width: 100%; max-height: 100%;"></canvas>
       </div>
 
@@ -1122,6 +1121,12 @@
           </svg>
           Share
         </button>
+      </div>
+
+      <!-- AD CONTAINER - MOBILE -->
+      <div id="mobileAdContainer" class="ad-container mobile-ad">
+        <span style="font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;">Advertisement</span>
+        <!-- Ads will be loaded here by JavaScript -->
       </div>
 
       <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px; color:var(--text); margin-top:12px;">Pages</div>
@@ -3411,6 +3416,7 @@ checkPwaInstall();
   border-top: 1px solid var(--border);
   padding: 24px 28px;
   background: var(--surface);
+  padding-bottom: calc(24px + env(safe-area-inset-bottom)); /* Add padding for safe areas */
   margin-top: 40px;
   text-align: center;
 ">
