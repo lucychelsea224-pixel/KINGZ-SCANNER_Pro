@@ -1031,7 +1031,10 @@
         <!-- populated by JS -->
       </div>
 
-      <div style="font-size:0.85rem; font-weight:600; margin-bottom:8px; color:var(--text); margin-top:12px;">Adjustments</div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; margin-top:12px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--text);">Adjustments</div>
+        <button class="btn btn-secondary" id="toggleMobileAdjustmentsBtn" onclick="toggleMobileAdjustments()">Edit</button>
+      </div>
       <div class="mobile-sliders">
         <div class="slider-row">
           <label>Brightness</label>
@@ -2552,6 +2555,19 @@ function showMobileSection(index) {
     updateMobileEditPreview();
   } else if (index === 2) {
     updateMobileExportPreview();
+  }
+}
+
+// Toggle mobile adjustments visibility
+function toggleMobileAdjustments() {
+  const sliders = document.getElementById('mobileAdjustmentsSliders');
+  const btn = document.getElementById('toggleMobileAdjustmentsBtn');
+  if (sliders.style.display === 'none') {
+    sliders.style.display = 'flex';
+    btn.textContent = 'Done';
+  } else {
+    sliders.style.display = 'none';
+    btn.textContent = 'Edit';
   }
 }
 
